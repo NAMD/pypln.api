@@ -30,7 +30,7 @@ USERNAME = 'admin'
 PASSWORD = 'admin'
 
 def random_name():
-    return ''.join([choice(ascii_letters) for i in range(randint(0, 10))])
+    return ''.join([choice(ascii_letters) for i in range(randint(5, 10))])
 
 class TestPyPLN(unittest.TestCase):
     def test_login(self):
