@@ -4,7 +4,7 @@
 .idea/*
 dist/*
 build/*
-pypln.egg-info/*
+pypln.api.egg-info/*
 .idea/*
 .coverage
 reg_settings.py
@@ -12,5 +12,3 @@ MANIFEST
 .directory
 *.db
 .env
-pypln/web/index/
-pypln/web/index.pid
