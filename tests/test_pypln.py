@@ -63,21 +63,12 @@ class TestPyPLN(unittest.TestCase):
         pypln.login(USERNAME, PASSWORD)
 
         corpus_name = 'My Corpus ' + random_name()
+        slug = corpus_name.strip().replace(' ', '-').lower()
         my_corpus = pypln.add_corpus(name=corpus_name, description='test')
         self.assertEqual(type(my_corpus), Corpus)
         self.assertEqual(my_corpus.name, corpus_name)
-        self.assertEqual(my_corpus.slug, corpus_name.lower().replace(' ', '-'))
+        self.assertEqual(my_corpus.slug, slug)
         self.assertEqual(my_corpus.description, 'test')
-
-    def test_Corpus_repr(self):
-        pypln = PyPLN(BASE_URL)
-        pypln.login(USERNAME, PASSWORD)
-
-        random_string = random_name()
-        corpus_name = 'My Corpus ' + random_string
-        my_corpus = pypln.add_corpus(name=corpus_name, description='test')
-
-        slug = corpus_name.strip().replace(' ', '-').lower()
         self.assertEqual(repr(my_corpus),
                          '<Corpus: {} ({})>'.format(corpus_name, slug))
 
@@ -116,18 +107,6 @@ class TestPyPLN(unittest.TestCase):
         self.assertEqual(type(doc), Document)
         self.assertEqual(doc.filename, random_filename)
         self.assertEqual(doc.corpora, [my_corpus])
-
-    def test_Document_repr(self):
-        pypln = PyPLN(BASE_URL)
-        pypln.login(USERNAME, PASSWORD)
-
-        corpus_name = random_name()
-        my_corpus = pypln.add_corpus(name=corpus_name, description='test')
-
-        with open('tests/data/python-wikipedia-en.pdf') as fobj:
-            random_filename = 'my_file_' + random_name() + '.pdf'
-            doc = my_corpus.add_document(fobj, filename=random_filename)
-
         self.assertEqual(repr(doc),
                          '<Document: {} ({})>'.format(random_filename,
                                                       repr(my_corpus)))
