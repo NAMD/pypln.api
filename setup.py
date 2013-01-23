@@ -17,7 +17,19 @@
 # You should have received a copy of the GNU General Public License
 # along with PyPLN.  If not, see <http://www.gnu.org/licenses/>.
 
-import pkg_resources
+from setuptools import setup, find_packages
 
 
-pkg_resources.declare_namespace(__name__)
+setup(name='pypln.api',
+      version='0.1.0d',
+      author=u'Álvaro Justen <alvarojusten@gmail.com>',
+      author_email='pypln@googlegroups.com',
+      url='https://github.com/NAMD/pypln.api',
+      description="Pythonic library to access PyPLN's Web interface",
+      zip_safe=True,
+      packages=find_packages(),
+      namespace_packages=['pypln'],
+      install_requires=['requests'],
+      test_suite='nose.collector',
+      license='GPL3',
+)
