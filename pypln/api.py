@@ -41,6 +41,14 @@ class Document(object):
         corpora = ', '.join([repr(corpus) for corpus in self.corpora])
         return '<Document: {} ({})>'.format(self.filename, corpora)
 
+    def __eq__(self, other):
+        return type(self) == type(other) and \
+               self.corpora == other.corpora and \
+               self.filename == other.filename
+
+    def __hash__(self):
+        return hash(repr(self))
+
 class Corpus(object):
     '''Class that represents a Document in PyPLN'''
 
@@ -51,7 +59,15 @@ class Corpus(object):
     def __repr__(self):
         return '<Corpus: {} ({})>'.format(self.name, self.slug)
 
-    def add_document(self, file_object, filename=None):
+    def __eq__(self, other):
+        return type(self) == type(other) and \
+               self.pypln.base_url == other.pypln.base_url and \
+               self.slug == other.slug
+
+    def __hash__(self):
+        return hash(repr(self))
+
+    def add_document(self, file_object, filename):
         '''Add a document to this corpus'''
         if filename is None:
             filename = file_object.name
