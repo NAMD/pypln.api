@@ -17,6 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with PyPLN.  If not, see <http://www.gnu.org/licenses/>.
 
+'''Implements a Python-layer to access PyPLN's API through HTTP'''
+
 import requests
 
 
@@ -24,10 +26,13 @@ LOGIN_URL = '/account/login/'
 CORPORA_PAGE = '/corpora/'
 CORPUS_URL = '{}/corpora/{}'
 
+CSRF_SPLIT = "<input type='hidden' name='csrfmiddlewaretoken' value='"
 def get_csrf(html):
-    return html.split("<input type='hidden' name='csrfmiddlewaretoken' value='")[1].split("'")[0]
+    '''Given an HTML, return the value of field "csrfgmiddlewaretoken"'''
+    return html.split(CSRF_SPLIT)[1].split("'")[0]
 
 class Document(object):
+    '''Class that represents a Document in PyPLN'''
     def __init__(self, *args, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -37,6 +42,8 @@ class Document(object):
         return '<Document: {} ({})>'.format(self.filename, corpora)
 
 class Corpus(object):
+    '''Class that represents a Document in PyPLN'''
+
     def __init__(self, *args, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -65,6 +72,7 @@ class Corpus(object):
                self.slug == other.slug
 
 def extract_corpora_from_html(html):
+    '''Given an HTML, this function extracts and returns all corpora listed'''
     data = html.split('<table id="table_corpora">')[1].split('</table>')[0]
     rows = data.split('<tr>')[2:]
     corpora = []
@@ -81,9 +89,7 @@ def extract_corpora_from_html(html):
     return corpora
 
 class PyPLN(object):
-    '''
-    Class to connect to PyPLN's API and execute some actions
-    '''
+    '''Class to connect to PyPLN's API and execute some actions'''
 
     def __init__(self, base_url):
         '''Initialize the API object, setting the base URL for the HTTP API'''
