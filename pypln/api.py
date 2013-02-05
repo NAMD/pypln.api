@@ -50,7 +50,7 @@ class Document(object):
         return hash(repr(self))
 
 class Corpus(object):
-    '''Class that represents a Document in PyPLN'''
+    '''Class that represents a Corpus in PyPLN'''
 
     def __init__(self, *args, **kwargs):
         for key, value in kwargs.items():
