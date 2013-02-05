@@ -96,12 +96,6 @@ class TestPyPLN(unittest.TestCase):
         my_corpus = pypln.add_corpus(name=corpus_name, description='test')
 
         with open('tests/data/python-wikipedia-en.pdf') as fobj:
-            doc = my_corpus.add_document(fobj)
-        self.assertEqual(type(doc), Document)
-        self.assertTrue(doc.filename.startswith('tests/data/python-wikipedia-en'))
-        self.assertEqual(doc.corpora, [my_corpus])
-
-        with open('tests/data/python-wikipedia-en.pdf') as fobj:
             random_filename = random_name() + '.pdf'
             doc = my_corpus.add_document(fobj, filename=random_filename)
         self.assertEqual(type(doc), Document)
@@ -110,3 +104,19 @@ class TestPyPLN(unittest.TestCase):
         self.assertEqual(repr(doc),
                          '<Document: {} ({})>'.format(random_filename,
                                                       repr(my_corpus)))
+
+    def test_list_documents(self):
+        pypln = PyPLN(BASE_URL)
+        pypln.login(USERNAME, PASSWORD)
+
+        corpus_name = random_name()
+        my_corpus = pypln.add_corpus(name=corpus_name, description='test')
+
+        documents = []
+        for i in range(5):
+            with open('tests/data/python-wikipedia-en.pdf') as fobj:
+                new_document = my_corpus.add_document(fobj,
+                        filename='document_{}.pdf'.format(random_name()))
+                documents.append(new_document)
+
+        self.assertEqual(set(my_corpus.documents()), set(documents))

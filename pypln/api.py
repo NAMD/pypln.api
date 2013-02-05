@@ -17,6 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with PyPLN.  If not, see <http://www.gnu.org/licenses/>.
 
+'''Implements a Python-layer to access PyPLN's API through HTTP'''
+
 import requests
 
 
@@ -24,10 +26,13 @@ LOGIN_URL = '/account/login/'
 CORPORA_PAGE = '/corpora/'
 CORPUS_URL = '{}/corpora/{}'
 
+CSRF_SPLIT = "<input type='hidden' name='csrfmiddlewaretoken' value='"
 def get_csrf(html):
-    return html.split("<input type='hidden' name='csrfmiddlewaretoken' value='")[1].split("'")[0]
+    '''Given an HTML, return the value of field "csrfgmiddlewaretoken"'''
+    return html.split(CSRF_SPLIT)[1].split("'")[0]
 
 class Document(object):
+    '''Class that represents a Document in PyPLN'''
     def __init__(self, *args, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -36,7 +41,17 @@ class Document(object):
         corpora = ', '.join([repr(corpus) for corpus in self.corpora])
         return '<Document: {} ({})>'.format(self.filename, corpora)
 
+    def __eq__(self, other):
+        return type(self) == type(other) and \
+               self.corpora == other.corpora and \
+               self.filename == other.filename
+
+    def __hash__(self):
+        return hash(repr(self))
+
 class Corpus(object):
+    '''Class that represents a Document in PyPLN'''
+
     def __init__(self, *args, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -44,46 +59,69 @@ class Corpus(object):
     def __repr__(self):
         return '<Corpus: {} ({})>'.format(self.name, self.slug)
 
-    def add_document(self, file_object, filename=None):
-        '''Add a document to this corpus'''
-        if filename is None:
-            filename = file_object.name
-        response = self._session.get(self.url)
-        csrf = get_csrf(response.text)
-        data = {'csrfmiddlewaretoken': csrf}
-        files = {'blob': (filename, file_object)}
-        response = self._session.post(self.url, data=data, files=files)
-        return Document(filename=filename, corpora=[self]) #TODO: slug, URL
-
-    def documents(self):
-        '''List documents on this corpus'''
-        pass
-
     def __eq__(self, other):
         return type(self) == type(other) and \
                self.pypln.base_url == other.pypln.base_url and \
                self.slug == other.slug
 
-def extract_corpora_from_html(html):
-    data = html.split('<table id="table_corpora">')[1].split('</table>')[0]
-    rows = data.split('<tr>')[2:]
-    corpora = []
-    field_names = ('name', 'created_on', 'last_modified',
-                   'number_of_documents', 'owner')
-    for raw_row in rows:
+    def __hash__(self):
+        return hash(repr(self))
+
+    def add_document(self, file_object, filename):
+        '''Add a document to this corpus'''
+        response = self.pypln._session.get(self.url)
+        csrf = get_csrf(response.text)
+        data = {'csrfmiddlewaretoken': csrf}
+        files = {'blob': (filename, file_object)}
+        response = self.pypln._session.post(self.url, data=data, files=files)
+        return Document(filename=filename, corpora=[self]) #TODO: slug, URL
+
+    def documents(self):
+        '''List documents on this corpus'''
+        url = CORPUS_URL.format(self.pypln.base_url, self.slug)
+        response = self.pypln._session.get(url)
+        documents = []
+        for document in extract_documents_from_html(response.text):
+            document['corpora'] = [self]
+            documents.append(Document(**document))
+        return documents
+
+def extract_data_from_html_table(html, table_id, field_names):
+    split_string = '<table id="{}"'.format(table_id)
+    data = html.split(split_string)[1].split('</table>')[0]
+    raw_rows = data.split('<tr>')[2:]
+    rows = []
+    for raw_row in raw_rows:
         row_data = [x.split('</td>')[0] for x in raw_row.split('<td>')[1:]]
         row_dict = dict(zip(field_names, row_data))
-        name_and_slug = row_dict['name']
-        row_dict['owner'] = row_dict['owner'].split('>')[1].split('<')[0]
-        row_dict['name'] = row_dict['name'].split('>')[1].split('<')[0]
-        row_dict['slug'] = name_and_slug.split('"')[1].replace('/corpora/', '')
-        corpora.append(row_dict)
-    return corpora
+        rows.append(row_dict)
+    return rows
+
+def extract_documents_from_html(html):
+    '''Given an HTML, extracts and returns all documents listed there'''
+    field_names = ('filename', 'size', 'upload_date', 'owner')
+    rows = extract_data_from_html_table(html, 'table_documents', field_names)
+    for row in rows:
+        row['owner'] = row['owner'].split('>')[1].split('<')[0]
+        filename_and_slug = row['filename']
+        row['filename'] = filename_and_slug.split('>')[1].split('<')[0]
+        row['slug'] = filename_and_slug.split('"')[1].replace('/documents/', '')
+    return rows
+
+def extract_corpora_from_html(html):
+    '''Given an HTML, extracts and returns all corpora listed'''
+    field_names = ('name', 'created_on', 'last_modified',
+                   'number_of_documents', 'owner')
+    rows = extract_data_from_html_table(html, 'table_corpora', field_names)
+    for row in rows:
+        name_and_slug = row['name']
+        row['owner'] = row['owner'].split('>')[1].split('<')[0]
+        row['name'] = row['name'].split('>')[1].split('<')[0]
+        row['slug'] = name_and_slug.split('"')[1].replace('/corpora/', '')
+    return rows
 
 class PyPLN(object):
-    '''
-    Class to connect to PyPLN's API and execute some actions
-    '''
+    '''Class to connect to PyPLN's API and execute some actions'''
 
     def __init__(self, base_url):
         '''Initialize the API object, setting the base URL for the HTTP API'''
