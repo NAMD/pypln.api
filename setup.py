@@ -21,7 +21,7 @@ from setuptools import setup, find_packages
 
 
 setup(name='pypln.api',
-      version='0.1.0d',
+      version='0.1.0',
       author=u'Álvaro Justen <alvarojusten@gmail.com>',
       author_email='pypln@googlegroups.com',
       url='https://github.com/NAMD/pypln.api',
