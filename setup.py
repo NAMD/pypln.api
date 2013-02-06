@@ -22,7 +22,8 @@ from setuptools import setup, find_packages
 
 setup(name='pypln.api',
       version='0.1.0',
-      author=u'Álvaro Justen <alvarojusten@gmail.com>',
+      author=('Álvaro Justen <alvarojusten@gmail.com>',
+              'Flávio Amieiro <flavioamieiro@gmail.com>'),
       author_email='pypln@googlegroups.com',
       url='https://github.com/NAMD/pypln.api',
       description="Pythonic library to access PyPLN's Web interface",
