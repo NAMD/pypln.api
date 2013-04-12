@@ -22,6 +22,7 @@
 import requests
 
 
+__version__ = '0.1.1'
 LOGIN_URL = '/account/login/'
 CORPORA_PAGE = '/corpora/'
 CORPUS_URL = '{}/corpora/{}'

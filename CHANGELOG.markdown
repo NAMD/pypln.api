@@ -1,8 +1,10 @@
-``pypln.api``'s Change Log
-==========================
+# `pypln.api`'s Change Log
 
-0.1.0
------
+## 0.1.1
+
+- Adds `add_documents` method to `PyPLN.Corpus`
+
+## 0.1.0
 
 Initial release! Features:
 
