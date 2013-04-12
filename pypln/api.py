@@ -22,6 +22,7 @@
 import requests
 
 
+__version__ = '0.1.1'
 LOGIN_URL = '/account/login/'
 CORPORA_PAGE = '/corpora/'
 CORPUS_URL = '{}/corpora/{}'
@@ -75,6 +76,17 @@ class Corpus(object):
         files = {'blob': (filename, file_object)}
         response = self.pypln._session.post(self.url, data=data, files=files)
         return Document(filename=filename, corpora=[self]) #TODO: slug, URL
+
+    def add_documents(self, file_objects, filenames):
+        '''Add more than one document using the same API call'''
+        response = self.pypln._session.get(self.url)
+        csrf = get_csrf(response.text)
+        data = {'csrfmiddlewaretoken': csrf}
+        files = [('blob', (filename, file_object))
+                 for filename, file_object in zip(filenames, file_objects)]
+        response = self.pypln._session.post(self.url, data=data, files=files)
+        return [Document(filename=filename, corpora=[self])
+                for filename in filenames] # TODO: slug, URL
 
     def documents(self):
         '''List documents on this corpus'''
