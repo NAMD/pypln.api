@@ -21,16 +21,10 @@
 
 import requests
 
-
 __version__ = '0.1.1'
-LOGIN_URL = '/account/login/'
+
 CORPORA_PAGE = '/corpora/'
 CORPUS_URL = '{}/corpora/{}'
-
-CSRF_SPLIT = "<input type='hidden' name='csrfmiddlewaretoken' value='"
-def get_csrf(html):
-    '''Given an HTML, return the value of field "csrfgmiddlewaretoken"'''
-    return html.split(CSRF_SPLIT)[1].split("'")[0]
 
 class Document(object):
     '''Class that represents a Document in PyPLN'''
@@ -97,40 +91,6 @@ class Corpus(object):
             document['corpora'] = [self]
             documents.append(Document(**document))
         return documents
-
-def extract_data_from_html_table(html, table_id, field_names):
-    split_string = '<table id="{}"'.format(table_id)
-    data = html.split(split_string)[1].split('</table>')[0]
-    raw_rows = data.split('<tr>')[2:]
-    rows = []
-    for raw_row in raw_rows:
-        row_data = [x.split('</td>')[0] for x in raw_row.split('<td>')[1:]]
-        row_dict = dict(zip(field_names, row_data))
-        rows.append(row_dict)
-    return rows
-
-def extract_documents_from_html(html):
-    '''Given an HTML, extracts and returns all documents listed there'''
-    field_names = ('filename', 'size', 'upload_date', 'owner')
-    rows = extract_data_from_html_table(html, 'table_documents', field_names)
-    for row in rows:
-        row['owner'] = row['owner'].split('>')[1].split('<')[0]
-        filename_and_slug = row['filename']
-        row['filename'] = filename_and_slug.split('>')[1].split('<')[0]
-        row['slug'] = filename_and_slug.split('"')[1].replace('/documents/', '')
-    return rows
-
-def extract_corpora_from_html(html):
-    '''Given an HTML, extracts and returns all corpora listed'''
-    field_names = ('name', 'created_on', 'last_modified',
-                   'number_of_documents', 'owner')
-    rows = extract_data_from_html_table(html, 'table_corpora', field_names)
-    for row in rows:
-        name_and_slug = row['name']
-        row['owner'] = row['owner'].split('>')[1].split('<')[0]
-        row['name'] = row['name'].split('>')[1].split('<')[0]
-        row['slug'] = name_and_slug.split('"')[1].replace('/corpora/', '')
-    return rows
 
 class PyPLN(object):
     '''Class to connect to PyPLN's API and execute some actions'''
