@@ -111,7 +111,7 @@ class PyPLN(object):
         data = {'name': name, 'description': description}
         result = requests.post(corpora_url, data=data, auth=self.auth)
         if result.status_code == 201:
-            return True
+            return result.json()
         else:
             raise RuntimeError("Corpus creation failed with status "
                                "{}. The response was: '{}'".format(result.status_code,

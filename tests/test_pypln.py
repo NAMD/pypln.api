@@ -31,16 +31,21 @@ class PyPLNCorpusTest(unittest.TestCase):
 
     @patch("requests.post")
     def test_create_corpus(self, mocked_post):
+        expected = {'created_at': '2013-10-25T17:00:00.000Z',
+                  'description': 'Test Corpus',
+                  'documents': [],
+                  'name': 'test',
+                  'owner': 'user',
+                  'url': 'http://pypln.example.com/corpora/1/'}
         mocked_post.return_value.status_code = 201
+        mocked_post.return_value.json.return_value = expected
 
         pypln = PyPLN(self.base_url, username=self.user, password=self.password)
         result = pypln.add_corpus(**self.data)
 
         mocked_post.assert_called_with(self.base_url + "/corpora/",
                                      data=self.data, auth=(self.user, self.password))
-        # For now, we return True when the corpus is created. Later
-        # we'll probably return a Corpus object (if it exists)
-        self.assertEqual(result, True)
+        self.assertEqual(result, expected)
 
     @patch("requests.post")
     def test_corpus_creation_fails(self, mocked_post):
