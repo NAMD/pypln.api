@@ -93,63 +93,33 @@ class Corpus(object):
         return documents
 
 class PyPLN(object):
-    '''Class to connect to PyPLN's API and execute some actions'''
+    """
+    Class to connect to PyPLN's API and execute some actions
+    """
 
-    def __init__(self, base_url):
-        '''Initialize the API object, setting the base URL for the HTTP API'''
-
-        self._session = requests.session()
+    def __init__(self, base_url, username, password):
+        """
+        Initialize the API object, setting the base URL for the REST
+        API, as well as the username and password to be used.
+        """
         self.base_url = base_url
-        self.logged_in = False
-        self.username = None
-        self.password = None
-
-    def login(self, username, password):
-        '''Log-in into this API session '''
-        login_url = self.base_url + LOGIN_URL
-        login_page = self._session.get(login_url)
-        csrf_token = get_csrf(login_page.text)
-        data = {'username': username, 'password': password,
-                'csrfmiddlewaretoken': csrf_token}
-        result = self._session.post(login_url, data=data)
-        self.logged_in = 'sessionid' in result.cookies
-        if self.logged_in:
-            self.username = username
-            self.password = password
-        return self.logged_in
-
-    def logout(self):
-        '''Log-out'''
-        self._session.get(self.base_url + '/account/logout')
-        self._session = requests.session()
-        self.logged_in = False
-        self.username = None
-        self.password = None
-        return True
+        self.auth = username, password
 
     def add_corpus(self, name, description):
         '''Add a corpus to your account'''
-        corpora_page_url = self.base_url + CORPORA_PAGE
-        corpora_page = self._session.get(corpora_page_url)
-        csrf_token = get_csrf(corpora_page.text)
-        data = {'name': name, 'description': description,
-                'csrfmiddlewaretoken': csrf_token}
-        result = self._session.post(corpora_page_url, data=data)
-        corpora = extract_corpora_from_html(result.text)
-        this_corpus = [x for x in corpora if x['name'] == name]
-        if not this_corpus:
-            raise RuntimeError('Could not add this corpus')
+        corpora_url = self.base_url + CORPORA_PAGE
+        data = {'name': name, 'description': description}
+        result = requests.post(corpora_url, data=data, auth=self.auth)
+        if result.status_code == 201:
+            return True
         else:
-            corpus = this_corpus[0]
-            corpus['description'] = description
-            corpus['_session'] = self._session
-            corpus['url'] = CORPUS_URL.format(self.base_url, corpus['slug'])
-            corpus['pypln'] = self
-            return Corpus(**corpus)
+            raise RuntimeError("Corpus creation failed with status "
+                               "{}. The response was: '{}'".format(result.status_code,
+                                result.text))
 
     def corpora(self):
         '''Return list of corpora'''
-        result = self._session.get(self.base_url + CORPORA_PAGE)
+        result = requests.get(self.base_url + CORPORA_PAGE)
         corpora = extract_corpora_from_html(result.text)
         corpora_list = []
         for corpus in corpora:
