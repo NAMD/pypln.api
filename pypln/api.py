@@ -23,7 +23,6 @@ import requests
 
 __version__ = '0.1.1'
 
-CORPORA_PAGE = '/corpora/'
 CORPUS_URL = '{}/corpora/{}'
 
 class Document(object):
@@ -96,6 +95,7 @@ class PyPLN(object):
     """
     Class to connect to PyPLN's API and execute some actions
     """
+    CORPORA_PAGE = '/corpora/'
 
     def __init__(self, base_url, username, password):
         """
@@ -107,7 +107,7 @@ class PyPLN(object):
 
     def add_corpus(self, name, description):
         '''Add a corpus to your account'''
-        corpora_url = self.base_url + CORPORA_PAGE
+        corpora_url = self.base_url + self.CORPORA_PAGE
         data = {'name': name, 'description': description}
         result = requests.post(corpora_url, data=data, auth=self.auth)
         if result.status_code == 201:
@@ -119,11 +119,10 @@ class PyPLN(object):
 
     def corpora(self):
         '''Return list of corpora'''
-        result = requests.get(self.base_url + CORPORA_PAGE)
-        corpora = extract_corpora_from_html(result.text)
-        corpora_list = []
-        for corpus in corpora:
-            #TODO: add description
-            corpus['pypln'] = self
-            corpora_list.append(Corpus(**corpus))
-        return corpora_list
+        result = requests.get(self.base_url + self.CORPORA_PAGE, auth=self.auth)
+        if result.status_code == 200:
+            return result.json()
+        else:
+            raise RuntimeError("Listing corpora failed with status "
+                               "{}. The response was: '{}'".format(result.status_code,
+                                result.text))

@@ -29,23 +29,25 @@ class PyPLNCorpusTest(unittest.TestCase):
         self.data = {"name": "corpus", "description": "Test Corpus"}
         self.base_url = "http://pypln.example.com"
 
+        self.example_corpus = {'created_at': '2013-10-25T17:00:00.000Z',
+                               'description': 'Test Corpus',
+                               'documents': [],
+                               'name': 'test',
+                               'owner': 'user',
+                               'url': 'http://pypln.example.com/corpora/1/'}
+
+
     @patch("requests.post")
     def test_create_corpus(self, mocked_post):
-        expected = {'created_at': '2013-10-25T17:00:00.000Z',
-                  'description': 'Test Corpus',
-                  'documents': [],
-                  'name': 'test',
-                  'owner': 'user',
-                  'url': 'http://pypln.example.com/corpora/1/'}
         mocked_post.return_value.status_code = 201
-        mocked_post.return_value.json.return_value = expected
+        mocked_post.return_value.json.return_value = self.example_corpus
 
         pypln = PyPLN(self.base_url, username=self.user, password=self.password)
         result = pypln.add_corpus(**self.data)
 
         mocked_post.assert_called_with(self.base_url + "/corpora/",
                                      data=self.data, auth=(self.user, self.password))
-        self.assertEqual(result, expected)
+        self.assertEqual(result, self.example_corpus)
 
     @patch("requests.post")
     def test_corpus_creation_fails(self, mocked_post):
@@ -53,3 +55,25 @@ class PyPLNCorpusTest(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             pypln = PyPLN("http://pypln.example.com", username=self.user, password=self.password)
             result = pypln.add_corpus(**self.data)
+
+    @patch("requests.get")
+    def test_list_corpora(self, mocked_get):
+        mocked_get.return_value.status_code = 200
+        mocked_get.return_value.json.return_value = [self.example_corpus]
+
+        pypln = PyPLN(self.base_url, username=self.user, password=self.password)
+        result = pypln.corpora()
+
+        mocked_get.assert_called_with(self.base_url + "/corpora/",
+                                      auth=(self.user, self.password))
+
+        self.assertEqual(result, [self.example_corpus])
+
+    @patch("requests.get")
+    def test_listing_corpora_fails(self, mocked_get):
+        mocked_get.return_value.status_code = 403
+        mocked_get.return_value.json.return_value = [self.example_corpus]
+
+        pypln = PyPLN(self.base_url, username=self.user, password=self.password)
+
+        self.assertRaises(RuntimeError, pypln.corpora)
