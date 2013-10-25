@@ -36,7 +36,6 @@ class PyPLNCorpusTest(unittest.TestCase):
                                'owner': 'user',
                                'url': 'http://pypln.example.com/corpora/1/'}
 
-
     @patch("requests.post")
     def test_create_corpus(self, mocked_post):
         mocked_post.return_value.status_code = 201
@@ -51,9 +50,9 @@ class PyPLNCorpusTest(unittest.TestCase):
 
     @patch("requests.post")
     def test_corpus_creation_fails(self, mocked_post):
-        mocked_post.return_value.status_code = 400
+        mocked_post.return_value.status_code = 403
         with self.assertRaises(RuntimeError):
-            pypln = PyPLN("http://pypln.example.com", username=self.user, password=self.password)
+            pypln = PyPLN(self.base_url, username=self.user, password=self.password)
             result = pypln.add_corpus(**self.data)
 
     @patch("requests.get")
