@@ -22,7 +22,7 @@ import unittest
 
 from pypln.api import PyPLN, Corpus, Document
 
-class PyPLNCorpusTest(unittest.TestCase):
+class PyPLNTest(unittest.TestCase):
     def setUp(self):
         self.user = "user"
         self.password = "password"
