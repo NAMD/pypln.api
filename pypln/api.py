@@ -51,45 +51,32 @@ class Corpus(object):
             setattr(self, key, value)
 
     def __repr__(self):
-        return '<Corpus: {} ({})>'.format(self.name, self.slug)
+        return '<Corpus: {} ({})>'.format(self.name, self.url)
 
     def __eq__(self, other):
-        return type(self) == type(other) and \
-               self.pypln.base_url == other.pypln.base_url and \
-               self.slug == other.slug
+        return (self.name == other.name) and \
+                (self.description == other.description) and \
+                (self.created_at == other.created_at) and \
+                (self.owner == other.owner) and \
+                (self.url == other.url)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def __hash__(self):
         return hash(repr(self))
 
     def add_document(self, file_object, filename):
         '''Add a document to this corpus'''
-        response = self.pypln._session.get(self.url)
-        csrf = get_csrf(response.text)
-        data = {'csrfmiddlewaretoken': csrf}
-        files = {'blob': (filename, file_object)}
-        response = self.pypln._session.post(self.url, data=data, files=files)
-        return Document(filename=filename, corpora=[self]) #TODO: slug, URL
+        pass
 
     def add_documents(self, file_objects, filenames):
         '''Add more than one document using the same API call'''
-        response = self.pypln._session.get(self.url)
-        csrf = get_csrf(response.text)
-        data = {'csrfmiddlewaretoken': csrf}
-        files = [('blob', (filename, file_object))
-                 for filename, file_object in zip(filenames, file_objects)]
-        response = self.pypln._session.post(self.url, data=data, files=files)
-        return [Document(filename=filename, corpora=[self])
-                for filename in filenames] # TODO: slug, URL
+        pass
 
     def documents(self):
         '''List documents on this corpus'''
-        url = CORPUS_URL.format(self.pypln.base_url, self.slug)
-        response = self.pypln._session.get(url)
-        documents = []
-        for document in extract_documents_from_html(response.text):
-            document['corpora'] = [self]
-            documents.append(Document(**document))
-        return documents
+        pass
 
 class PyPLN(object):
     """
@@ -111,7 +98,7 @@ class PyPLN(object):
         data = {'name': name, 'description': description}
         result = requests.post(corpora_url, data=data, auth=self.auth)
         if result.status_code == 201:
-            return result.json()
+            return Corpus(**result.json())
         else:
             raise RuntimeError("Corpus creation failed with status "
                                "{}. The response was: '{}'".format(result.status_code,
@@ -121,7 +108,7 @@ class PyPLN(object):
         '''Return list of corpora'''
         result = requests.get(self.base_url + self.CORPORA_PAGE, auth=self.auth)
         if result.status_code == 200:
-            return result.json()
+            return [Corpus(**corp) for corp in result.json()]
         else:
             raise RuntimeError("Listing corpora failed with status "
                                "{}. The response was: '{}'".format(result.status_code,

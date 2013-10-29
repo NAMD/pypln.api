@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with PyPLN.  If not, see <http://www.gnu.org/licenses/>.
 
+import copy
 from mock import patch, Mock
 import unittest
 
@@ -46,7 +47,8 @@ class PyPLNTest(unittest.TestCase):
 
         mocked_post.assert_called_with(self.base_url + "/corpora/",
                                      data=self.data, auth=(self.user, self.password))
-        self.assertEqual(result, self.example_corpus)
+        corpus = Corpus(**self.example_corpus)
+        self.assertEqual(result, corpus)
 
     @patch("requests.post")
     def test_corpus_creation_fails(self, mocked_post):
@@ -66,7 +68,8 @@ class PyPLNTest(unittest.TestCase):
         mocked_get.assert_called_with(self.base_url + "/corpora/",
                                       auth=(self.user, self.password))
 
-        self.assertEqual(result, [self.example_corpus])
+        corpus = Corpus(**self.example_corpus)
+        self.assertEqual(result, [corpus])
 
     @patch("requests.get")
     def test_listing_corpora_fails(self, mocked_get):
@@ -76,3 +79,70 @@ class PyPLNTest(unittest.TestCase):
         pypln = PyPLN(self.base_url, username=self.user, password=self.password)
 
         self.assertRaises(RuntimeError, pypln.corpora)
+
+class CorpusTest(unittest.TestCase):
+
+    def setUp(self):
+        self.example_json = {'created_at': '2013-10-25T17:00:00.000Z',
+                             'description': 'Test Corpus',
+                             'documents': [],
+                             'name': 'test',
+                             'owner': 'user',
+                             'url': 'http://pypln.example.com/corpora/1/'}
+
+    def test_instantiate_corpus_from_json(self):
+        corpus = Corpus(**self.example_json)
+
+        for k,v in self.example_json.items():
+            self.assertEqual(getattr(corpus, k), v)
+
+    def test_compare_equal_corpora(self):
+        corpus_1 = Corpus(**self.example_json)
+        corpus_2 = Corpus(**self.example_json)
+
+        self.assertEqual(corpus_1, corpus_2)
+
+    def test_compare_corpora_with_different_names(self):
+        corpus_1 = Corpus(**self.example_json)
+
+        json_2 = copy.deepcopy(self.example_json)
+        json_2['name'] = 'other_name'
+        corpus_2 = Corpus(**json_2)
+
+        self.assertNotEqual(corpus_1, corpus_2)
+
+    def test_compare_corpora_with_different_descriptions(self):
+        corpus_1 = Corpus(**self.example_json)
+
+        json_2 = copy.deepcopy(self.example_json)
+        json_2['description'] = 'Test Corpus 2'
+        corpus_2 = Corpus(**json_2)
+
+        self.assertNotEqual(corpus_1, corpus_2)
+
+    def test_compare_corpora_with_different_creation_dates(self):
+        corpus_1 = Corpus(**self.example_json)
+
+        json_2 = copy.deepcopy(self.example_json)
+        json_2['created_at'] = '2013-10-29T17:00:00.000Z'
+        corpus_2 = Corpus(**json_2)
+
+        self.assertNotEqual(corpus_1, corpus_2)
+
+    def test_compare_corpora_with_different_owners(self):
+        corpus_1 = Corpus(**self.example_json)
+
+        json_2 = copy.deepcopy(self.example_json)
+        json_2['owner'] = 'admin'
+        corpus_2 = Corpus(**json_2)
+
+        self.assertNotEqual(corpus_1, corpus_2)
+
+    def test_compare_corpora_with_different_urls(self):
+        corpus_1 = Corpus(**self.example_json)
+
+        json_2 = copy.deepcopy(self.example_json)
+        json_2['url'] = 'http://pypln.example.com.br/corpora/1/'
+        corpus_2 = Corpus(**json_2)
+
+        self.assertNotEqual(corpus_1, corpus_2)
