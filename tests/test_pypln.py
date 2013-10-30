@@ -88,6 +88,8 @@ class CorpusTest(unittest.TestCase):
                              'name': 'test',
                              'owner': 'user',
                              'url': 'http://pypln.example.com/corpora/1/'}
+        self.user = "user"
+        self.password = "password"
 
     def test_instantiate_corpus_from_json(self):
         corpus = Corpus(**self.example_json)
@@ -145,3 +147,29 @@ class CorpusTest(unittest.TestCase):
         corpus_2 = Corpus(**json_2)
 
         self.assertNotEqual(corpus_1, corpus_2)
+
+    @patch("requests.get")
+    def test_instantiate_corpus_from_url(self, mocked_get):
+        mocked_get.return_value.status_code = 200
+        mocked_get.return_value.json.return_value = self.example_json
+
+        url = self.example_json['url']
+
+        corpus = Corpus.from_url(url, (self.user, self.password))
+
+        mocked_get.assert_called_with(url, auth=(self.user, self.password))
+
+        self.assertIsInstance(corpus, Corpus)
+
+        for k, v in self.example_json.items():
+            self.assertEqual(getattr(corpus, k), v)
+
+    @patch("requests.get")
+    def test_instantiating_corpus_from_url_fails(self, mocked_get):
+        mocked_get.return_value.status_code = 403
+        mocked_get.return_value.json.return_value = self.example_json
+
+        url = self.example_json['url']
+
+        with self.assertRaises(RuntimeError):
+            corpus = Corpus.from_url(url, (self.user, self.password))

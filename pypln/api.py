@@ -66,6 +66,16 @@ class Corpus(object):
     def __hash__(self):
         return hash(repr(self))
 
+    @classmethod
+    def from_url(cls, url, auth):
+        result = requests.get(url, auth=auth)
+        if result.status_code == 200:
+            return cls(**result.json())
+        else:
+            raise RuntimeError("Getting corpus details failed with status "
+                               "{}. The response was: '{}'".format(result.status_code,
+                                result.text))
+
     def add_document(self, file_object, filename):
         '''Add a document to this corpus'''
         pass
