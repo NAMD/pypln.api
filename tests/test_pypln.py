@@ -88,6 +88,16 @@ class CorpusTest(unittest.TestCase):
                              'name': 'test',
                              'owner': 'user',
                              'url': 'http://pypln.example.com/corpora/1/'}
+
+        self.example_document = {
+            "owner": "user",
+            "corpus": "http://pypln.example.com/corpora/1/",
+            "size": 238953,
+            "properties": "http://pypln.example.com/documents/3/properties/",
+            "url": "http://pypln.example.com/documents/1/",
+            "blob": "/example.pdf",
+            "uploaded_at": "2013-10-25T17:10:00.000Z"
+        }
         self.user = "user"
         self.password = "password"
 
@@ -173,3 +183,47 @@ class CorpusTest(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             corpus = Corpus.from_url(url, (self.user, self.password))
+
+    @patch("requests.post")
+    def test_adding_document_to_corpus_requires_auth(self, mocked_post):
+
+        corpus = Corpus(**self.example_json)
+        with self.assertRaises(AttributeError):
+            corpus.add_document("example.pdf")
+
+        mocked_post.assert_not_called()
+
+        mocked_post.return_value.status_code = 201
+
+        # auth can be set on the constructor
+        corpus_2 = Corpus(auth=("user", "passwd"), **self.example_json)
+        corpus_2.add_document("example.pdf")
+        mocked_post.assert_called()
+
+    @patch("requests.post")
+    def test_add_document_to_corpus(self, mocked_post):
+        mocked_post.return_value.status_code = 201
+        mocked_post.return_value.json.return_value = self.example_document
+
+        corpus = Corpus(**self.example_json)
+        result = corpus.add_document("example.pdf",
+                    auth=(self.user, self.password))
+
+        # requests takes either a filename or a file descriptor. Both should
+        # work.
+        files = {"blob": "example.pdf"}
+        data = {"corpus": corpus.url}
+
+        mocked_post.assert_called_with("http://pypln.example.com" + "/documents/",
+                                     data=data, files=files,
+                                     auth=(self.user, self.password))
+
+        self.assertEqual(result, self.example_document)
+
+    @patch("requests.post")
+    def test_adding_document_to_corpus_fails(self, mocked_post):
+        mocked_post.return_value.status_code = 403
+
+        corpus = Corpus(**self.example_json)
+        with self.assertRaises(RuntimeError):
+            corpus.add_document("example.pdf", auth=(self.user, self.password))

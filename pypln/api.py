@@ -19,6 +19,8 @@
 
 '''Implements a Python-layer to access PyPLN's API through HTTP'''
 
+import urllib
+import urlparse
 import requests
 
 __version__ = '0.1.1'
@@ -45,10 +47,15 @@ class Document(object):
 
 class Corpus(object):
     '''Class that represents a Corpus in PyPLN'''
+    DOCUMENTS_PAGE = '/documents/'
 
     def __init__(self, *args, **kwargs):
+        self.auth = None
         for key, value in kwargs.items():
             setattr(self, key, value)
+
+        splited_url = urlparse.urlsplit(self.url)
+        self.base_url = "{}://{}".format(splited_url.scheme, splited_url.netloc)
 
     def __repr__(self):
         return '<Corpus: {} ({})>'.format(self.name, self.url)
@@ -76,9 +83,27 @@ class Corpus(object):
                                "{}. The response was: '{}'".format(result.status_code,
                                 result.text))
 
-    def add_document(self, file_object, filename):
+    def add_document(self, file_object, auth=None):
         '''Add a document to this corpus'''
-        pass
+        # update credentials if auth is provided
+        if auth is not None:
+            self.auth = auth
+
+        if self.auth is None:
+            raise AttributeError("You need to determine your credentials in "
+                    "order to add documents.")
+
+        documents_url = urllib.basejoin(self.base_url, self.DOCUMENTS_PAGE)
+        data = {"corpus": self.url}
+        files = {"blob": file_object}
+        result = requests.post(documents_url, data=data, files=files,
+                    auth=self.auth)
+        if result.status_code == 201:
+            return result.json()
+        else:
+            raise RuntimeError("Corpus creation failed with status "
+                               "{}. The response was: '{}'".format(result.status_code,
+                                result.text))
 
     def add_documents(self, file_objects, filenames):
         '''Add more than one document using the same API call'''
