@@ -109,10 +109,6 @@ class Corpus(object):
         '''Add more than one document using the same API call'''
         pass
 
-    def documents(self):
-        '''List documents on this corpus'''
-        pass
-
 class PyPLN(object):
     """
     Class to connect to PyPLN's API and execute some actions
