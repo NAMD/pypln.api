@@ -166,13 +166,16 @@ class CorpusTest(unittest.TestCase):
         url = self.example_json['url']
 
         corpus = Corpus.from_url(url, (self.user, self.password))
+        auth = (self.user, self.password)
 
-        mocked_get.assert_called_with(url, auth=(self.user, self.password))
+        mocked_get.assert_called_with(url, auth=auth)
 
         self.assertIsInstance(corpus, Corpus)
 
         for k, v in self.example_json.items():
             self.assertEqual(getattr(corpus, k), v)
+
+        self.assertEqual(corpus.auth, auth)
 
     @patch("requests.get")
     def test_instantiating_corpus_from_url_fails(self, mocked_get):

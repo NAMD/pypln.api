@@ -77,7 +77,7 @@ class Corpus(object):
     def from_url(cls, url, auth):
         result = requests.get(url, auth=auth)
         if result.status_code == 200:
-            return cls(**result.json())
+            return cls(auth=auth, **result.json())
         else:
             raise RuntimeError("Getting corpus details failed with status "
                                "{}. The response was: '{}'".format(result.status_code,
