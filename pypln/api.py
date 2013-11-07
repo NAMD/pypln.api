@@ -83,8 +83,14 @@ class Corpus(object):
                                "{}. The response was: '{}'".format(result.status_code,
                                 result.text))
 
-    def add_document(self, file_object, auth=None):
-        '''Add a document to this corpus'''
+    def add_document(self, document, auth=None):
+        '''
+        Add a document to this corpus
+
+        `document' is passed to `requests.post', so it can be a file-like
+        object, a string (that will be sent as the file content) or a tuple
+        containing a filename followed by any of these two options.
+        '''
         # update credentials if auth is provided
         if auth is not None:
             self.auth = auth
@@ -95,7 +101,7 @@ class Corpus(object):
 
         documents_url = urllib.basejoin(self.base_url, self.DOCUMENTS_PAGE)
         data = {"corpus": self.url}
-        files = {"blob": file_object}
+        files = {"blob": document}
         result = requests.post(documents_url, data=data, files=files,
                     auth=self.auth)
         if result.status_code == 201:

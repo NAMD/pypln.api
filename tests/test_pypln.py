@@ -209,12 +209,12 @@ class CorpusTest(unittest.TestCase):
         mocked_post.return_value.json.return_value = self.example_document
 
         corpus = Corpus(**self.example_json)
-        result = corpus.add_document("example.pdf",
+        result = corpus.add_document("content.",
                     auth=(self.user, self.password))
 
-        # requests takes either a filename or a file descriptor. Both should
+        # requests takes either a file-like object or a string. Both should
         # work.
-        files = {"blob": "example.pdf"}
+        files = {"blob": "content."}
         data = {"corpus": corpus.url}
 
         mocked_post.assert_called_with("http://pypln.example.com" + "/documents/",
