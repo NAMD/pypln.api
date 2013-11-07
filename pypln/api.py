@@ -111,9 +111,22 @@ class Corpus(object):
                                "{}. The response was: '{}'".format(result.status_code,
                                 result.text))
 
-    def add_documents(self, file_objects, filenames):
-        '''Add more than one document using the same API call'''
-        pass
+    def add_documents(self, documents, auth=None):
+        '''
+        Adds more than one document using the same API call
+
+        Returns two lists: the first one contains the successfully uploaded
+        documents, and the second one tuples with documents that failed to be
+        uploaded and the exceptions raised.
+        '''
+        result, errors = [], []
+        for document in documents:
+            try:
+                result.append(self.add_document(document, auth=auth))
+            except RuntimeError as exc:
+                errors.append((document, exc))
+
+        return result, errors
 
 class PyPLN(object):
     """

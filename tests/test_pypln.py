@@ -18,7 +18,7 @@
 # along with PyPLN.  If not, see <http://www.gnu.org/licenses/>.
 
 import copy
-from mock import patch, Mock
+from mock import call, patch, Mock
 import unittest
 
 from pypln.api import PyPLN, Corpus, Document
@@ -230,3 +230,43 @@ class CorpusTest(unittest.TestCase):
         corpus = Corpus(**self.example_json)
         with self.assertRaises(RuntimeError):
             corpus.add_document("example.pdf", auth=(self.user, self.password))
+
+    @patch("pypln.api.Corpus.add_document")
+    def test_add_multiple_documents_to_corpus(self, mocked_add_document):
+        example_document_2 = copy.deepcopy(self.example_document)
+        example_document_2['url'] = "http://pypln.example.com/documents/2/",
+        results = [self.example_document, example_document_2]
+        mocked_add_document.side_effect = results
+
+        corpus = Corpus(**self.example_json)
+        result = corpus.add_documents(["content_1", "content_2"],
+                    auth=(self.user, self.password))
+
+        expected_calls = [call("content_1", auth=(self.user, self.password)),
+            call("content_2", auth=(self.user, self.password))]
+        mocked_add_document.assert_has_calls(expected_calls)
+
+        expected = ([self.example_document, example_document_2], [])
+        self.assertEqual(result, expected)
+
+    @patch("pypln.api.Corpus.add_document")
+    def test_adding_multiple_documents_returns_an_error(self, mocked_add_document):
+        results = [self.example_document, RuntimeError]
+        mocked_add_document.side_effect = results
+
+        corpus = Corpus(**self.example_json)
+        result = corpus.add_documents(["content_1", "content_2"],
+                    auth=(self.user, self.password))
+
+        expected_calls = [call("content_1", auth=(self.user, self.password)),
+            call("content_2", auth=(self.user, self.password))]
+        mocked_add_document.assert_has_calls(expected_calls)
+
+        expected = ([self.example_document], [("content_2", RuntimeError())])
+        # How should we test this? The second element of the 'errors' tuple is
+        # a different instance of RuntimeError, so it doesn't evaluate as equal
+        # to the one raise in the mock. For now I'll just check everything
+        # separatedly.
+        self.assertEqual(result[0], expected[0])
+        self.assertEqual(result[1][0][0], expected[1][0][0])
+        self.assertIsInstance(expected[1][0][1], RuntimeError)
