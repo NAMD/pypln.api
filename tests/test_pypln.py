@@ -270,3 +270,68 @@ class CorpusTest(unittest.TestCase):
         self.assertEqual(result[0], expected[0])
         self.assertEqual(result[1][0][0], expected[1][0][0])
         self.assertIsInstance(expected[1][0][1], RuntimeError)
+
+class DocumentTest(unittest.TestCase):
+
+    def setUp(self):
+        self.example_json = {
+            "owner": "user",
+            "corpus": "http://pypln.example.com/corpora/1/",
+            "size": 238953,
+            "properties": "http://pypln.example.com/documents/3/properties/",
+            "url": "http://pypln.example.com/documents/1/",
+            "blob": "/example.pdf",
+            "uploaded_at": "2013-10-25T17:10:00.000Z"
+        }
+        self.user = "user"
+        self.password = "password"
+
+    def test_instantiate_document_from_json(self):
+        document = Document(**self.example_json)
+
+        for k,v in self.example_json.items():
+            self.assertEqual(getattr(document, k), v)
+
+    def test_compare_equal_documents(self):
+        document_1 = Document(**self.example_json)
+        document_2 = Document(**self.example_json)
+
+        self.assertEqual(document_1, document_2)
+
+    def test_compare_document_with_different_urls(self):
+        document_1 = Document(**self.example_json)
+
+        json_2 = copy.deepcopy(self.example_json)
+        json_2['url'] = 'http://pypln.example2.com/documents/1/'
+        document_2 = Document(**json_2)
+
+        self.assertNotEqual(document_1, document_2)
+
+    @patch("requests.get")
+    def test_instantiate_document_from_url(self, mocked_get):
+        mocked_get.return_value.status_code = 200
+        mocked_get.return_value.json.return_value = self.example_json
+
+        url = self.example_json['url']
+
+        document = Document.from_url(url, (self.user, self.password))
+        auth = (self.user, self.password)
+
+        mocked_get.assert_called_with(url, auth=auth)
+
+        self.assertIsInstance(document, Document)
+
+        for k, v in self.example_json.items():
+            self.assertEqual(getattr(document, k), v)
+
+        self.assertEqual(document.auth, auth)
+
+    @patch("requests.get")
+    def test_instantiating_document_from_url_fails(self, mocked_get):
+        mocked_get.return_value.status_code = 403
+        mocked_get.return_value.json.return_value = self.example_json
+
+        url = self.example_json['url']
+
+        with self.assertRaises(RuntimeError):
+            document = Document.from_url(url, (self.user, self.password))

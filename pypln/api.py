@@ -34,16 +34,29 @@ class Document(object):
             setattr(self, key, value)
 
     def __repr__(self):
-        corpora = ', '.join([repr(corpus) for corpus in self.corpora])
-        return '<Document: {} ({})>'.format(self.filename, corpora)
+        return '<Document: {} ({})>'.format(self.blob, self.url)
 
     def __eq__(self, other):
-        return type(self) == type(other) and \
-               self.corpora == other.corpora and \
-               self.filename == other.filename
+        # The URL is supposed to be unique, so it should be enough to compare
+        # two documents
+        return self.url == other.url
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def __hash__(self):
         return hash(repr(self))
+
+    @classmethod
+    def from_url(cls, url, auth):
+        result = requests.get(url, auth=auth)
+        if result.status_code == 200:
+            return cls(auth=auth, **result.json())
+        else:
+            raise RuntimeError("Getting corpus details failed with status "
+                               "{}. The response was: '{}'".format(result.status_code,
+                                result.text))
+
 
 class Corpus(object):
     '''Class that represents a Corpus in PyPLN'''
