@@ -290,7 +290,10 @@ class DocumentTest(unittest.TestCase):
         document = Document(**self.example_json)
 
         for k,v in self.example_json.items():
-            self.assertEqual(getattr(document, k), v)
+            if k != "properties":
+                self.assertEqual(getattr(document, k), v)
+        self.assertEqual(document.properties_url,
+                            self.example_json['properties'])
 
     def test_compare_equal_documents(self):
         document_1 = Document(**self.example_json)
@@ -321,8 +324,11 @@ class DocumentTest(unittest.TestCase):
 
         self.assertIsInstance(document, Document)
 
-        for k, v in self.example_json.items():
-            self.assertEqual(getattr(document, k), v)
+        for k,v in self.example_json.items():
+            if k != "properties":
+                self.assertEqual(getattr(document, k), v)
+        self.assertEqual(document.properties_url,
+                            self.example_json['properties'])
 
         self.assertEqual(document.auth, auth)
 
@@ -335,3 +341,45 @@ class DocumentTest(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             document = Document.from_url(url, (self.user, self.password))
+
+    @patch("requests.get")
+    def test_properties_is_a_list_of_properties(self, mocked_get):
+        """ When accessing `document.properties' the user should get a list of
+        properties, not a url for the resource."""
+        expected_properties = [
+            "mimetype",
+            "freqdist",
+            "average_sentence_repertoire",
+            "language",
+            "average_sentence_length",
+            "sentences",
+            "momentum_1",
+            "pos",
+            "momentum_3",
+            "file_metadata",
+            "tokens",
+            "repertoire",
+            "text",
+            "tagset",
+            "momentum_4",
+            "momentum_2"
+        ]
+
+        mocked_get.return_value.status_code = 200
+        mocked_get.return_value.json.return_value = {'properties': [
+                self.example_json['properties'] + prop + '/'
+                for prop in expected_properties]}
+
+        auth = (self.user, self.password)
+        document = Document(auth=auth, **self.example_json)
+
+        self.assertEqual(document.properties, expected_properties)
+        mocked_get.assert_called_with(self.example_json['properties'], auth=auth)
+
+    @patch("requests.get")
+    def test_getting_properties_returns_an_error(self, mocked_get):
+        mocked_get.return_value.status_code = 403
+        document = Document(auth=("user", "user"), **self.example_json)
+
+        with self.assertRaises(RuntimeError):
+            document.properties

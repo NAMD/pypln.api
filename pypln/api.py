@@ -30,8 +30,15 @@ CORPUS_URL = '{}/corpora/{}'
 class Document(object):
     '''Class that represents a Document in PyPLN'''
     def __init__(self, *args, **kwargs):
+        self.auth = None
         for key, value in kwargs.items():
-            setattr(self, key, value)
+            # The `properties' attr should be the content of the resource under
+            # /properties/, not it's url. So we save the url here and retrieve
+            # the list of available properties when the user accesses it.
+            if key == "properties":
+                self.properties_url = value
+            else:
+                setattr(self, key, value)
 
     def __repr__(self):
         return '<Document: {} ({})>'.format(self.blob, self.url)
@@ -53,9 +60,31 @@ class Document(object):
         if result.status_code == 200:
             return cls(auth=auth, **result.json())
         else:
-            raise RuntimeError("Getting corpus details failed with status "
+            raise RuntimeError("Getting document details failed with status "
                                "{}. The response was: '{}'".format(result.status_code,
                                 result.text))
+
+    @property
+    def properties(self):
+        if self.auth is None:
+            raise AttributeError("You need to determine your credentials in "
+                    "order to access a document's properties.")
+
+        response = requests.get(self.properties_url, auth=self.auth)
+        if response.status_code == 200:
+            properties = []
+            for prop in response.json()['properties']:
+                properties.append(prop.replace(self.properties_url, ''))
+
+            # There should be a better way to do this.
+            properties = [prop.split(self.properties_url)[1].replace('/', '')
+                    for prop in response.json()['properties']]
+
+            return properties
+        else:
+            raise RuntimeError("Getting document properties failed with status "
+                               "{}. The response was: '{}'".format(response.status_code,
+                                response.text))
 
 
 class Corpus(object):
