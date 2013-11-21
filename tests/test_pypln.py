@@ -383,3 +383,30 @@ class DocumentTest(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             document.properties
+
+    @patch("requests.get")
+    def test_get_specific_property(self, mocked_get):
+        text = "This is a test file with some test text."
+
+        mocked_get.return_value.status_code = 200
+        mocked_get.return_value.json.return_value = {'value': text}
+
+        auth = (self.user, self.password)
+        document = Document(auth=auth, **self.example_json)
+
+        self.assertEqual(document.get_property('text'), text)
+        mocked_get.assert_called_with(self.example_json['properties'] + 'text',
+                auth=auth)
+
+    def test_getting_specific_property_needs_auth(self):
+        document = Document(**self.example_json)
+        with self.assertRaises(AttributeError):
+            document.get_property('text')
+
+    @patch("requests.get")
+    def test_getting_specific_property_returns_an_error(self, mocked_get):
+        mocked_get.return_value.status_code = 403
+        document = Document(auth=("user", "user"), **self.example_json)
+
+        with self.assertRaises(RuntimeError):
+            document.get_property('text')

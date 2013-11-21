@@ -64,6 +64,19 @@ class Document(object):
                                "{}. The response was: '{}'".format(result.status_code,
                                 result.text))
 
+    def get_property(self, prop):
+        if self.auth is None:
+            raise AttributeError("You need to determine your credentials in "
+                    "order to access a document's properties.")
+        url = urlparse.urljoin(self.properties_url, prop)
+        response = requests.get(url, auth=self.auth)
+        if response.status_code == 200:
+            return response.json()['value']
+        else:
+            raise RuntimeError("Getting property {} failed with status "
+                               "{}. The response was: '{}'".format(prop,
+                                   response.status_code, response.text))
+
     @property
     def properties(self):
         if self.auth is None:
