@@ -46,7 +46,11 @@ class Document(object):
     def __eq__(self, other):
         # The URL is supposed to be unique, so it should be enough to compare
         # two documents
-        return self.url == other.url
+        return (self.url == other.url) and \
+                (self.size == other.size) and \
+                (self.uploaded_at == other.uploaded_at) and \
+                (self.owner == other.owner) and \
+                (self.corpus == other.corpus)
 
     def __ne__(self, other):
         return not self.__eq__(other)

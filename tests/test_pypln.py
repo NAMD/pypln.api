@@ -301,11 +301,47 @@ class DocumentTest(unittest.TestCase):
 
         self.assertEqual(document_1, document_2)
 
-    def test_compare_document_with_different_urls(self):
+    def test_compare_documents_with_different_urls(self):
         document_1 = Document(**self.example_json)
 
         json_2 = copy.deepcopy(self.example_json)
         json_2['url'] = 'http://pypln.example2.com/documents/1/'
+        document_2 = Document(**json_2)
+
+        self.assertNotEqual(document_1, document_2)
+
+    def test_compare_documents_with_different_size(self):
+        document_1 = Document(**self.example_json)
+
+        json_2 = copy.deepcopy(self.example_json)
+        json_2['size'] = 1
+        document_2 = Document(**json_2)
+
+        self.assertNotEqual(document_1, document_2)
+
+    def test_compare_documents_with_different_upload_dates(self):
+        document_1 = Document(**self.example_json)
+
+        json_2 = copy.deepcopy(self.example_json)
+        json_2['uploaded_at'] = '2013-10-29T17:00:00.000Z'
+        document_2 = Document(**json_2)
+
+        self.assertNotEqual(document_1, document_2)
+
+    def test_compare_documents_with_different_owners(self):
+        document_1 = Document(**self.example_json)
+
+        json_2 = copy.deepcopy(self.example_json)
+        json_2['owner'] = "user_2"
+        document_2 = Document(**json_2)
+
+        self.assertNotEqual(document_1, document_2)
+
+    def test_compare_documents_with_different_corpora(self):
+        document_1 = Document(**self.example_json)
+
+        json_2 = copy.deepcopy(self.example_json)
+        json_2['corpus'] = "http://pypln.example.com/corpora/2/"
         document_2 = Document(**json_2)
 
         self.assertNotEqual(document_1, document_2)
