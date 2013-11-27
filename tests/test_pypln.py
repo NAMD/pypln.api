@@ -93,7 +93,7 @@ class CorpusTest(unittest.TestCase):
             "owner": "user",
             "corpus": "http://pypln.example.com/corpora/1/",
             "size": 238953,
-            "properties": "http://pypln.example.com/documents/3/properties/",
+            "properties": "http://pypln.example.com/documents/1/properties/",
             "url": "http://pypln.example.com/documents/1/",
             "blob": "/example.pdf",
             "uploaded_at": "2013-10-25T17:10:00.000Z"
