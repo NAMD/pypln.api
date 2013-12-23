@@ -60,7 +60,11 @@ class PyPLNTest(unittest.TestCase):
     @patch("requests.get")
     def test_list_corpora(self, mocked_get):
         mocked_get.return_value.status_code = 200
-        mocked_get.return_value.json.return_value = [self.example_corpus]
+        mocked_get.return_value.json.return_value = \
+                {u'count': 1,
+                 u'next': None,
+                 u'previous': None,
+                 u'results': [self.example_corpus]}
 
         pypln = PyPLN(self.base_url, username=self.user, password=self.password)
         result = pypln.corpora()

@@ -217,7 +217,7 @@ class PyPLN(object):
         '''Return list of corpora'''
         result = requests.get(self.base_url + self.CORPORA_PAGE, auth=self.auth)
         if result.status_code == 200:
-            return [Corpus(**corp) for corp in result.json()]
+            return [Corpus(**corp) for corp in result.json()['results']]
         else:
             raise RuntimeError("Listing corpora failed with status "
                                "{}. The response was: '{}'".format(result.status_code,
