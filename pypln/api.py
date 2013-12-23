@@ -29,8 +29,8 @@ CORPUS_URL = '{}/corpora/{}'
 
 class Document(object):
     '''Class that represents a Document in PyPLN'''
-    def __init__(self, *args, **kwargs):
-        self.auth = None
+    def __init__(self, session, *args, **kwargs):
+        self.session = session
         for key, value in kwargs.items():
             # The `properties' attr should be the content of the resource under
             # /properties/, not it's url. So we save the url here and retrieve
@@ -60,20 +60,19 @@ class Document(object):
 
     @classmethod
     def from_url(cls, url, auth):
-        result = requests.get(url, auth=auth)
+        session = requests.Session()
+        session.auth = auth
+        result = session.get(url)
         if result.status_code == 200:
-            return cls(auth=auth, **result.json())
+            return cls(session=session, **result.json())
         else:
             raise RuntimeError("Getting document details failed with status "
                                "{}. The response was: '{}'".format(result.status_code,
                                 result.text))
 
     def get_property(self, prop):
-        if self.auth is None:
-            raise AttributeError("You need to determine your credentials in "
-                    "order to access a document's properties.")
         url = urlparse.urljoin(self.properties_url, prop)
-        response = requests.get(url, auth=self.auth)
+        response = self.session.get(url)
         if response.status_code == 200:
             return response.json()['value']
         else:
@@ -83,11 +82,7 @@ class Document(object):
 
     @property
     def properties(self):
-        if self.auth is None:
-            raise AttributeError("You need to determine your credentials in "
-                    "order to access a document's properties.")
-
-        response = requests.get(self.properties_url, auth=self.auth)
+        response = self.session.get(self.properties_url)
         if response.status_code == 200:
             properties = []
             for prop in response.json()['properties']:
@@ -108,8 +103,12 @@ class Corpus(object):
     '''Class that represents a Corpus in PyPLN'''
     DOCUMENTS_PAGE = '/documents/'
 
-    def __init__(self, *args, **kwargs):
-        self.auth = None
+    def __init__(self, session, *args, **kwargs):
+        ''' Initializes a Corpus class
+
+        `session` must be `requests.Session` object with authentication data
+        '''
+        self.session = session
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -134,15 +133,17 @@ class Corpus(object):
 
     @classmethod
     def from_url(cls, url, auth):
-        result = requests.get(url, auth=auth)
+        session = requests.Session()
+        session.auth = auth
+        result = session.get(url)
         if result.status_code == 200:
-            return cls(auth=auth, **result.json())
+            return cls(session=session, **result.json())
         else:
             raise RuntimeError("Getting corpus details failed with status "
                                "{}. The response was: '{}'".format(result.status_code,
                                 result.text))
 
-    def add_document(self, document, auth=None):
+    def add_document(self, document):
         '''
         Add a document to this corpus
 
@@ -150,19 +151,11 @@ class Corpus(object):
         object, a string (that will be sent as the file content) or a tuple
         containing a filename followed by any of these two options.
         '''
-        # update credentials if auth is provided
-        if auth is not None:
-            self.auth = auth
-
-        if self.auth is None:
-            raise AttributeError("You need to determine your credentials in "
-                    "order to add documents.")
 
         documents_url = urllib.basejoin(self.base_url, self.DOCUMENTS_PAGE)
         data = {"corpus": self.url}
         files = {"blob": document}
-        result = requests.post(documents_url, data=data, files=files,
-                    auth=self.auth)
+        result = self.session.post(documents_url, data=data, files=files)
         if result.status_code == 201:
             return result.json()
         else:
@@ -170,7 +163,7 @@ class Corpus(object):
                                "{}. The response was: '{}'".format(result.status_code,
                                 result.text))
 
-    def add_documents(self, documents, auth=None):
+    def add_documents(self, documents):
         '''
         Adds more than one document using the same API call
 
@@ -181,7 +174,7 @@ class Corpus(object):
         result, errors = [], []
         for document in documents:
             try:
-                result.append(self.add_document(document, auth=auth))
+                result.append(self.add_document(document))
             except RuntimeError as exc:
                 errors.append((document, exc))
 
@@ -199,15 +192,16 @@ class PyPLN(object):
         API, as well as the username and password to be used.
         """
         self.base_url = base_url
-        self.auth = username, password
+        self.session = requests.Session()
+        self.session.auth = (username, password)
 
     def add_corpus(self, name, description):
         '''Add a corpus to your account'''
         corpora_url = self.base_url + self.CORPORA_PAGE
         data = {'name': name, 'description': description}
-        result = requests.post(corpora_url, data=data, auth=self.auth)
+        result = self.session.post(corpora_url, data=data)
         if result.status_code == 201:
-            return Corpus(**result.json())
+            return Corpus(session=self.session, **result.json())
         else:
             raise RuntimeError("Corpus creation failed with status "
                                "{}. The response was: '{}'".format(result.status_code,
@@ -215,9 +209,11 @@ class PyPLN(object):
 
     def corpora(self):
         '''Return list of corpora'''
-        result = requests.get(self.base_url + self.CORPORA_PAGE, auth=self.auth)
+        result = self.session.get(self.base_url + self.CORPORA_PAGE)
         if result.status_code == 200:
-            return [Corpus(**corp) for corp in result.json()['results']]
+            corpora_list = result.json()['results']
+            return [Corpus(session=self.session, **corpus_data)
+                    for corpus_data in corpora_list]
         else:
             raise RuntimeError("Listing corpora failed with status "
                                "{}. The response was: '{}'".format(result.status_code,
