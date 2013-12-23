@@ -1,5 +1,6 @@
 test:
-	nosetests -dsv tests/test_*.py
+	clear
+	nosetests -dsv --with-yanc --with-coverage --cover-package pypln.api tests/test_*.py
 
 develop:
 	pip install -r requirements/development.txt

@@ -1,3 +1,6 @@
 -r production.txt
 
 nose
+yanc
+coverage
+mock
