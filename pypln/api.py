@@ -27,6 +27,19 @@ __version__ = '0.1.1'
 
 CORPUS_URL = '{}/corpora/{}'
 
+def get_session_with_credentials(credentials):
+    session = requests.Session()
+    if isinstance(credentials, tuple):
+        session.auth = credentials
+    elif isinstance(credentials, str):
+        session.headers.update(
+            {'Authorization': 'Token {}'.format(credentials)})
+    else:
+        raise TypeError("`credentials` must be a tuple (for HTTP Basic authentication) or a string (for Token authentication).")
+
+    return session
+
+
 class Document(object):
     '''Class that represents a Document in PyPLN'''
     def __init__(self, session, *args, **kwargs):
@@ -59,9 +72,8 @@ class Document(object):
         return hash(repr(self))
 
     @classmethod
-    def from_url(cls, url, auth):
-        session = requests.Session()
-        session.auth = auth
+    def from_url(cls, url, credentials):
+        session = get_session_with_credentials(credentials)
         result = session.get(url)
         if result.status_code == 200:
             return cls(session=session, **result.json())
@@ -132,9 +144,8 @@ class Corpus(object):
         return hash(repr(self))
 
     @classmethod
-    def from_url(cls, url, auth):
-        session = requests.Session()
-        session.auth = auth
+    def from_url(cls, url, credentials):
+        session = get_session_with_credentials(credentials)
         result = session.get(url)
         if result.status_code == 200:
             return cls(session=session, **result.json())
@@ -186,14 +197,13 @@ class PyPLN(object):
     """
     CORPORA_PAGE = '/corpora/'
 
-    def __init__(self, base_url, username, password):
+    def __init__(self, base_url, credentials):
         """
         Initialize the API object, setting the base URL for the REST
         API, as well as the username and password to be used.
         """
         self.base_url = base_url
-        self.session = requests.Session()
-        self.session.auth = (username, password)
+        self.session = get_session_with_credentials(credentials)
 
     def add_corpus(self, name, description):
         '''Add a corpus to your account'''
