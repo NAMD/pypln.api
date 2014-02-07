@@ -41,13 +41,29 @@ class PyPLNTest(unittest.TestCase):
                                'owner': 'user',
                                'url': 'http://pypln.example.com/corpora/1/'}
 
+    def test_basic_auth_is_correctly_set(self):
+        credentials = (self.user, self.password)
+        pypln = PyPLN(self.base_url, credentials)
+        self.assertEqual(pypln.session.auth, credentials)
+
+    def test_token_auth_is_correctly_set(self):
+        credentials = 'ea92019a4bdf5d1c122c58b53de3e8d36fe9ae6a'
+        pypln = PyPLN(self.base_url, credentials)
+        self.assertEqual(pypln.session.headers['Authorization'],
+                'Token {}'.format(credentials))
+
+    def test_raise_an_error_if_auth_is_not_str_or_tuple(self):
+        """If the `auth` argument is not a tuple (for basic auth) or a string
+        (for token auth), an error should be raised."""
+        with self.assertRaises(TypeError):
+            pypln = PyPLN(self.base_url, 1)
+
     @patch("requests.Session.post")
     def test_create_corpus(self, mocked_post):
         mocked_post.return_value.status_code = 201
         mocked_post.return_value.json.return_value = self.example_corpus
 
-        pypln = PyPLN(self.base_url, username=self.user,
-                      password=self.password)
+        pypln = PyPLN(self.base_url, (self.user, self.password))
         result = pypln.add_corpus(**self.corpus_data)
 
         mocked_post.assert_called_with(self.base_url + "/corpora/",
@@ -62,8 +78,7 @@ class PyPLNTest(unittest.TestCase):
     def test_corpus_creation_fails_if_wrong_auth(self, mocked_post):
         mocked_post.return_value.status_code = 403
         with self.assertRaises(RuntimeError):
-            pypln = PyPLN(self.base_url, username='wrong_user',
-                          password='my_precious')
+            pypln = PyPLN(self.base_url, ('wrong_user', 'my_precious'))
             result = pypln.add_corpus(**self.corpus_data)
 
     @patch("requests.Session.get")
@@ -75,8 +90,7 @@ class PyPLNTest(unittest.TestCase):
                  u'previous': None,
                  u'results': [self.example_corpus]}
 
-        pypln = PyPLN(self.base_url, username=self.user,
-                      password=self.password)
+        pypln = PyPLN(self.base_url, (self.user, self.password))
         result = pypln.corpora()
 
         mocked_get.assert_called_with(self.base_url + "/corpora/")
@@ -91,8 +105,7 @@ class PyPLNTest(unittest.TestCase):
     def test_listing_corpora_fails_if_wrong_auth(self, mocked_get):
         mocked_get.return_value.status_code = 403
 
-        pypln = PyPLN(self.base_url, username='wrong_user',
-                      password='my_precious')
+        pypln = PyPLN(self.base_url, ('wrong_user', 'my_precious'))
 
         self.assertRaises(RuntimeError, pypln.corpora)
 
