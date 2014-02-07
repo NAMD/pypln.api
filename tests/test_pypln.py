@@ -164,6 +164,7 @@ class PyPLNTest(unittest.TestCase):
         self.assertIs(retrieved_document_1.session, pypln.session)
         self.assertIs(retrieved_document_2.session, pypln.session)
 
+
     @patch("requests.Session.get")
     def test_listing_documents_fails_if_wrong_auth(self, mocked_get):
         mocked_get.return_value.status_code = 403
@@ -171,6 +172,10 @@ class PyPLNTest(unittest.TestCase):
         pypln = PyPLN(self.base_url, ('wrong_user', 'my_precious'))
 
         self.assertRaises(RuntimeError, pypln.documents)
+
+    #TODO: test list documents in more than one page
+
+    #TODO: test list corpora in more than one page
 
 
 class CorpusTest(unittest.TestCase):

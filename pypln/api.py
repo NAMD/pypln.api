@@ -43,6 +43,7 @@ def get_session_with_credentials(credentials):
 class Document(object):
     '''Class that represents a Document in PyPLN'''
     def __init__(self, session, *args, **kwargs):
+
         self.session = session
         for key, value in kwargs.items():
             # The `properties' attr should be the content of the resource under
@@ -169,6 +170,7 @@ class Corpus(object):
         result = self.session.post(documents_url, data=data, files=files)
         if result.status_code == 201:
             return result.json()
+            #TODO: return Document object
         else:
             raise RuntimeError("Corpus creation failed with status "
                                "{}. The response was: '{}'".format(result.status_code,
@@ -218,28 +220,47 @@ class PyPLN(object):
                                "{}. The response was: '{}'".format(result.status_code,
                                 result.text))
 
-    def corpora(self):
-        '''Return list of corpora owned by user'''
-        result = self.session.get(self.base_url + self.CORPORA_PAGE)
-        if result.status_code == 200:
-            corpora_list = result.json()['results']
-            #TODO: what if we have more than one results page?
-            return [Corpus(session=self.session, **corpus_data)
-                    for corpus_data in corpora_list]
+    def _retrieve_resources(self, url, class_, full):
+        '''Retrieve HTTP resources, return related objects (with pagination)'''
+        objects_to_return = []
+        response = self.session.get(url)
+        if response.status_code == 200:
+            result = response.json()
+            resources = result['results']
+            objects_to_return.extend([class_(session=self.session, **resource)
+                                      for resource in resources])
+            while full and result['next'] is not None:
+                response = self.session.get(result['next'])
+                if response.status_code == 200:
+                    result = response.json()
+                    resources = result['results']
+                    objects_to_return.extend([class_(session=self.session,
+                                                     **resource)
+                                              for resource in resources])
+                else:
+                    raise RuntimeError("Failed downloading data with status {}"
+                            ". The response was: '{}'"
+                            .format(response.status_code, response.text))
+            return objects_to_return
         else:
-            raise RuntimeError("Listing corpora failed with status "
-                               "{}. The response was: '{}'".format(result.status_code,
-                                result.text))
+            raise RuntimeError("Failed downloading data with status {}"
+                    ". The response was: '{}'"
+                    .format(response.status_code, response.text))
 
-    def documents(self):
-        '''Return list of documents owned by user'''
-        result = self.session.get(self.base_url + self.DOCUMENTS_PAGE)
-        if result.status_code == 200:
-            documents_list = result.json()['results']
-            #TODO: what if we have more than one results page?
-            return [Document(session=self.session, **document_data)
-                    for document_data in documents_list]
-        else:
-            raise RuntimeError("Listing documents failed with status "
-                               "{}. The response was: '{}'".format(result.status_code,
-                                result.text))
+    def corpora(self, full=False):
+        '''Return list of corpora owned by user.
+
+        If `full=True`, it'll download all pages returned by the HTTP server'''
+        url = self.base_url + self.CORPORA_PAGE
+        class_ = Corpus
+        results = self._retrieve_resources(url, class_, full)
+        return results
+
+    def documents(self, full=False):
+        '''Return list of documents owned by user.
+
+        If `full=True`, it'll download all pages returned by the HTTP server'''
+        url = self.base_url + self.DOCUMENTS_PAGE
+        class_ = Document
+        results = self._retrieve_resources(url, class_, full)
+        return results
