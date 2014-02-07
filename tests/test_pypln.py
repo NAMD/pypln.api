@@ -289,6 +289,16 @@ class CorpusTest(unittest.TestCase):
             corpus = Corpus.from_url(url, ('wrong_user', 'my_precious'))
 
     @patch("requests.Session.post")
+    def test_adding_document_to_corpus_fails(self, mocked_post):
+        mocked_post.return_value.status_code = 403
+
+        session = requests.Session()
+        session.auth = ('wrong_user', 'my_precious')
+        corpus = Corpus(session=session, **self.example_json)
+        with self.assertRaises(RuntimeError):
+            corpus.add_document("example.pdf")
+
+    @patch("requests.Session.post")
     def test_add_document_to_corpus(self, mocked_post):
         mocked_post.return_value.status_code = 201
         mocked_post.return_value.json.return_value = self.example_document
@@ -301,36 +311,44 @@ class CorpusTest(unittest.TestCase):
         files = {"blob": "content."}
         data = {"corpus": corpus.url}
 
-        mocked_post.assert_called_with("http://pypln.example.com" + "/documents/",
-                                     data=data, files=files)
+        mocked_post.assert_called_with("http://pypln.example.com/documents/",
+                                       data=data, files=files)
 
-        self.assertEqual(result, self.example_document)
+        self.assertIs(type(result), Document)
+
+        for key, value in self.example_document.items():
+            if key == 'properties':
+                key = 'properties_url'
+            self.assertEqual(value, getattr(result, key))
 
     @patch("requests.Session.post")
-    def test_adding_document_to_corpus_fails(self, mocked_post):
-        mocked_post.return_value.status_code = 403
-
-        session = requests.Session()
-        session.auth = ('wrong_user', 'my_precious')
-        corpus = Corpus(session=session, **self.example_json)
-        with self.assertRaises(RuntimeError):
-            corpus.add_document("example.pdf")
-
-    @patch("pypln.api.Corpus.add_document")
-    def test_add_multiple_documents_to_corpus(self, mocked_add_document):
+    def test_add_multiple_documents_to_corpus(self, mocked_post):
         example_document_2 = self.example_document.copy()
-        example_document_2['url'] = "http://pypln.example.com/documents/2/",
-        results = [self.example_document, example_document_2]
-        mocked_add_document.side_effect = results
+        example_document_2['url'] = "http://pypln.example.com/documents/2/"
+
+        mock1, mock2 = Mock(), Mock()
+        mock1.status_code = mock2.status_code = 201
+        mock1.json.return_value = self.example_document
+        mock2.json.return_value = example_document_2
+        mocked_post.side_effect = [mock1, mock2]
 
         corpus = Corpus(session=self.session, **self.example_json)
         result = corpus.add_documents(["content_1", "content_2"])
+        documents, errors = result
 
-        expected_calls = [call("content_1"), call("content_2")]
-        mocked_add_document.assert_has_calls(expected_calls)
+        self.assertEqual(errors, [])
 
-        expected = ([self.example_document, example_document_2], [])
-        self.assertEqual(result, expected)
+        self.assertIs(type(documents[0]), Document)
+        self.assertIs(type(documents[1]), Document)
+
+        for key, value in self.example_document.items():
+            if key == 'properties':
+                key = 'properties_url'
+            self.assertEqual(value, getattr(documents[0], key))
+        for key, value in example_document_2.items():
+            if key == 'properties':
+                key = 'properties_url'
+            self.assertEqual(value, getattr(documents[1], key))
 
     @patch("pypln.api.Corpus.add_document")
     def test_adding_multiple_documents_returns_an_error(self, mocked_add_document):
@@ -351,6 +369,7 @@ class CorpusTest(unittest.TestCase):
         self.assertEqual(result[0], expected[0])
         self.assertEqual(result[1][0][0], expected[1][0][0])
         self.assertIsInstance(expected[1][0][1], RuntimeError)
+
 
 class DocumentTest(unittest.TestCase):
 

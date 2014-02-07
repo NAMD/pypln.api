@@ -49,10 +49,9 @@ class Document(object):
             # The `properties' attr should be the content of the resource under
             # /properties/, not it's url. So we save the url here and retrieve
             # the list of available properties when the user accesses it.
-            if key == "properties":
-                self.properties_url = value
-            else:
-                setattr(self, key, value)
+            if key == 'properties':
+                key = 'properties_url'
+            setattr(self, key, value)
 
     def __repr__(self):
         return '<Document: {} ({})>'.format(self.blob, self.url)
@@ -169,8 +168,7 @@ class Corpus(object):
         files = {"blob": document}
         result = self.session.post(documents_url, data=data, files=files)
         if result.status_code == 201:
-            return result.json()
-            #TODO: return Document object
+            return Document(session=self.session, **result.json())
         else:
             raise RuntimeError("Corpus creation failed with status "
                                "{}. The response was: '{}'".format(result.status_code,
