@@ -55,7 +55,6 @@ class PyPLNTest(unittest.TestCase):
     def test_raise_an_error_if_auth_is_not_str_or_tuple(self):
         """If the `auth` argument is not a tuple (for basic auth) or a string
         (for token auth), an error should be raised."""
-        credentials = 'ea92019a4bdf5d1c122c58b53de3e8d36fe9ae6a'
         with self.assertRaises(TypeError):
             pypln = PyPLN(self.base_url, 1)
 
