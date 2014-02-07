@@ -196,6 +196,7 @@ class PyPLN(object):
     Class to connect to PyPLN's API and execute some actions
     """
     CORPORA_PAGE = '/corpora/'
+    DOCUMENTS_PAGE = '/documents/'
 
     def __init__(self, base_url, credentials):
         """
@@ -218,13 +219,27 @@ class PyPLN(object):
                                 result.text))
 
     def corpora(self):
-        '''Return list of corpora'''
+        '''Return list of corpora owned by user'''
         result = self.session.get(self.base_url + self.CORPORA_PAGE)
         if result.status_code == 200:
             corpora_list = result.json()['results']
+            #TODO: what if we have more than one results page?
             return [Corpus(session=self.session, **corpus_data)
                     for corpus_data in corpora_list]
         else:
             raise RuntimeError("Listing corpora failed with status "
+                               "{}. The response was: '{}'".format(result.status_code,
+                                result.text))
+
+    def documents(self):
+        '''Return list of documents owned by user'''
+        result = self.session.get(self.base_url + self.DOCUMENTS_PAGE)
+        if result.status_code == 200:
+            documents_list = result.json()['results']
+            #TODO: what if we have more than one results page?
+            return [Document(session=self.session, **document_data)
+                    for document_data in documents_list]
+        else:
+            raise RuntimeError("Listing documents failed with status "
                                "{}. The response was: '{}'".format(result.status_code,
                                 result.text))

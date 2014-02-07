@@ -40,6 +40,26 @@ class PyPLNTest(unittest.TestCase):
                                'name': 'test',
                                'owner': 'user',
                                'url': 'http://pypln.example.com/corpora/1/'}
+        self.example_document_1 = \
+                {
+                 'owner': 'user',
+                 'corpus': 'http://pypln.example.com/corpora/42/',
+                 'size': 42,
+                 'properties': 'http://pypln.example.com/documents/123/properties',
+                 'url': 'http://pypln.example.com/documents/123/',
+                 'blob': '/test_1.txt',
+                 'uploaded_at': '2013-10-25T17:00:00.000Z',
+                 }
+        self.example_document_2 = \
+                {
+                 'owner': 'user',
+                 'corpus': 'http://pypln.example.com/corpora/42/',
+                 'size': 43,
+                 'properties': 'http://pypln.example.com/documents/124/properties',
+                 'url': 'http://pypln.example.com/documents/124/',
+                 'blob': '/test_2.txt',
+                 'uploaded_at': '2013-10-25T17:00:01.000Z',
+                 }
 
     def test_basic_auth_is_correctly_set(self):
         credentials = (self.user, self.password)
@@ -108,6 +128,50 @@ class PyPLNTest(unittest.TestCase):
         pypln = PyPLN(self.base_url, ('wrong_user', 'my_precious'))
 
         self.assertRaises(RuntimeError, pypln.corpora)
+
+    @patch("requests.Session.get")
+    def test_list_documents(self, mocked_get):
+        mocked_get.return_value.status_code = 200
+        mocked_get.return_value.json.return_value = \
+                {u'count': 2,
+                 u'next': None,
+                 u'previous': None,
+                 u'results': [self.example_document_1,
+                              self.example_document_2]}
+
+        pypln = PyPLN(self.base_url, (self.user, self.password))
+        result = pypln.documents()
+
+        mocked_get.assert_called_with(self.base_url + "/documents/")
+
+        retrieved_document_1 = result[0]
+        retrieved_document_2 = result[1]
+
+        for key, value in self.example_document_1.items():
+            # `properties` is a method on `Document` class, so replacing with
+            # `properties_url` to test each key/value
+            if key == 'properties':
+                key = 'properties_url'
+            self.assertEqual(value, getattr(retrieved_document_1, key))
+        for key, value in self.example_document_2.items():
+            # `properties` is a method on `Document` class, so replacing with
+            # `properties_url` to test each key/value
+            if key == 'properties':
+                key = 'properties_url'
+            self.assertEqual(value, getattr(retrieved_document_2, key))
+
+        # Document objects should link `session` object from PyPLN
+        self.assertIs(retrieved_document_1.session, pypln.session)
+        self.assertIs(retrieved_document_2.session, pypln.session)
+
+    @patch("requests.Session.get")
+    def test_listing_documents_fails_if_wrong_auth(self, mocked_get):
+        mocked_get.return_value.status_code = 403
+
+        pypln = PyPLN(self.base_url, ('wrong_user', 'my_precious'))
+
+        self.assertRaises(RuntimeError, pypln.documents)
+
 
 class CorpusTest(unittest.TestCase):
 
