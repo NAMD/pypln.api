@@ -23,7 +23,7 @@ from mock import call, patch, Mock
 
 import requests
 
-from pypln.api import PyPLN, Corpus, Document
+from pypln.api import PyPLN, Corpus, Document, __version__
 
 
 class PyPLNTest(unittest.TestCase):
@@ -77,6 +77,11 @@ class PyPLNTest(unittest.TestCase):
         (for token auth), an error should be raised."""
         with self.assertRaises(TypeError):
             pypln = PyPLN(self.base_url, 1)
+
+    def test_is_sending_pyplnapi_version_as_user_agent(self):
+        pypln = PyPLN(self.base_url, (self.user, self.password))
+        self.assertIn('pypln.api/{}'.format(__version__),
+                pypln.session.headers['User-Agent'])
 
     @patch("requests.Session.post")
     def test_create_corpus(self, mocked_post):

@@ -21,7 +21,9 @@
 
 import urllib
 import urlparse
+
 import requests
+
 
 __version__ = '0.2.0'
 
@@ -29,6 +31,8 @@ CORPUS_URL = '{}/corpora/{}'
 
 def get_session_with_credentials(credentials):
     session = requests.Session()
+    session.headers.update({'User-Agent':
+        'pypln.api/{} {}'.format(__version__, session.headers['User-Agent'])})
     if isinstance(credentials, tuple):
         session.auth = credentials
     elif isinstance(credentials, str):
