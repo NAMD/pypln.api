@@ -19,181 +19,250 @@
 
 '''Implements a Python-layer to access PyPLN's API through HTTP'''
 
+import urllib
+import urlparse
+
 import requests
 
 
-__version__ = '0.1.1'
-LOGIN_URL = '/account/login/'
-CORPORA_PAGE = '/corpora/'
+__version__ = '0.2.0'
+
 CORPUS_URL = '{}/corpora/{}'
 
-CSRF_SPLIT = "<input type='hidden' name='csrfmiddlewaretoken' value='"
-def get_csrf(html):
-    '''Given an HTML, return the value of field "csrfgmiddlewaretoken"'''
-    return html.split(CSRF_SPLIT)[1].split("'")[0]
+def get_session_with_credentials(credentials):
+    session = requests.Session()
+    session.headers.update({'User-Agent':
+        'pypln.api/{} {}'.format(__version__, session.headers['User-Agent'])})
+    if isinstance(credentials, tuple):
+        session.auth = credentials
+    elif isinstance(credentials, str):
+        session.headers.update(
+            {'Authorization': 'Token {}'.format(credentials)})
+    else:
+        raise TypeError("`credentials` must be a tuple (for HTTP Basic authentication) or a string (for Token authentication).")
+
+    return session
+
 
 class Document(object):
     '''Class that represents a Document in PyPLN'''
-    def __init__(self, *args, **kwargs):
+    def __init__(self, session, *args, **kwargs):
+
+        self.session = session
         for key, value in kwargs.items():
+            # The `properties' attr should be the content of the resource under
+            # /properties/, not it's url. So we save the url here and retrieve
+            # the list of available properties when the user accesses it.
+            if key == 'properties':
+                key = 'properties_url'
             setattr(self, key, value)
 
     def __repr__(self):
-        corpora = ', '.join([repr(corpus) for corpus in self.corpora])
-        return '<Document: {} ({})>'.format(self.filename, corpora)
+        return '<Document: {} ({})>'.format(self.blob, self.url)
 
     def __eq__(self, other):
-        return type(self) == type(other) and \
-               self.corpora == other.corpora and \
-               self.filename == other.filename
+        # The URL is supposed to be unique, so it should be enough to compare
+        # two documents
+        return (self.url == other.url) and \
+                (self.size == other.size) and \
+                (self.uploaded_at == other.uploaded_at) and \
+                (self.owner == other.owner) and \
+                (self.corpus == other.corpus)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def __hash__(self):
         return hash(repr(self))
+
+    @classmethod
+    def from_url(cls, url, credentials):
+        session = get_session_with_credentials(credentials)
+        result = session.get(url)
+        if result.status_code == 200:
+            return cls(session=session, **result.json())
+        else:
+            raise RuntimeError("Getting document details failed with status "
+                               "{}. The response was: '{}'".format(result.status_code,
+                                result.text))
+
+    def get_property(self, prop):
+        url = urlparse.urljoin(self.properties_url, prop)
+        response = self.session.get(url)
+        if response.status_code == 200:
+            return response.json()['value']
+        else:
+            raise RuntimeError("Getting property {} failed with status "
+                               "{}. The response was: '{}'".format(prop,
+                                   response.status_code, response.text))
+
+    @property
+    def properties(self):
+        response = self.session.get(self.properties_url)
+        if response.status_code == 200:
+            properties = []
+            for prop in response.json()['properties']:
+                properties.append(prop.replace(self.properties_url, ''))
+
+            # There should be a better way to do this.
+            properties = [prop.split(self.properties_url)[1].replace('/', '')
+                    for prop in response.json()['properties']]
+
+            return properties
+        else:
+            raise RuntimeError("Getting document properties failed with status "
+                               "{}. The response was: '{}'".format(response.status_code,
+                                response.text))
+
 
 class Corpus(object):
     '''Class that represents a Corpus in PyPLN'''
+    DOCUMENTS_PAGE = '/documents/'
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, session, *args, **kwargs):
+        ''' Initializes a Corpus class
+
+        `session` must be `requests.Session` object with authentication data
+        '''
+        self.session = session
         for key, value in kwargs.items():
             setattr(self, key, value)
 
+        splited_url = urlparse.urlsplit(self.url)
+        self.base_url = "{}://{}".format(splited_url.scheme, splited_url.netloc)
+
     def __repr__(self):
-        return '<Corpus: {} ({})>'.format(self.name, self.slug)
+        return '<Corpus: {} ({})>'.format(self.name, self.url)
 
     def __eq__(self, other):
-        return type(self) == type(other) and \
-               self.pypln.base_url == other.pypln.base_url and \
-               self.slug == other.slug
+        return (self.name == other.name) and \
+                (self.description == other.description) and \
+                (self.created_at == other.created_at) and \
+                (self.owner == other.owner) and \
+                (self.url == other.url)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def __hash__(self):
         return hash(repr(self))
 
-    def add_document(self, file_object, filename):
-        '''Add a document to this corpus'''
-        response = self.pypln._session.get(self.url)
-        csrf = get_csrf(response.text)
-        data = {'csrfmiddlewaretoken': csrf}
-        files = {'blob': (filename, file_object)}
-        response = self.pypln._session.post(self.url, data=data, files=files)
-        return Document(filename=filename, corpora=[self]) #TODO: slug, URL
+    @classmethod
+    def from_url(cls, url, credentials):
+        session = get_session_with_credentials(credentials)
+        result = session.get(url)
+        if result.status_code == 200:
+            return cls(session=session, **result.json())
+        else:
+            raise RuntimeError("Getting corpus details failed with status "
+                               "{}. The response was: '{}'".format(result.status_code,
+                                result.text))
 
-    def add_documents(self, file_objects, filenames):
-        '''Add more than one document using the same API call'''
-        response = self.pypln._session.get(self.url)
-        csrf = get_csrf(response.text)
-        data = {'csrfmiddlewaretoken': csrf}
-        files = [('blob', (filename, file_object))
-                 for filename, file_object in zip(filenames, file_objects)]
-        response = self.pypln._session.post(self.url, data=data, files=files)
-        return [Document(filename=filename, corpora=[self])
-                for filename in filenames] # TODO: slug, URL
+    def add_document(self, document):
+        '''
+        Add a document to this corpus
 
-    def documents(self):
-        '''List documents on this corpus'''
-        url = CORPUS_URL.format(self.pypln.base_url, self.slug)
-        response = self.pypln._session.get(url)
-        documents = []
-        for document in extract_documents_from_html(response.text):
-            document['corpora'] = [self]
-            documents.append(Document(**document))
-        return documents
+        `document' is passed to `requests.post', so it can be a file-like
+        object, a string (that will be sent as the file content) or a tuple
+        containing a filename followed by any of these two options.
+        '''
 
-def extract_data_from_html_table(html, table_id, field_names):
-    split_string = '<table id="{}"'.format(table_id)
-    data = html.split(split_string)[1].split('</table>')[0]
-    raw_rows = data.split('<tr>')[2:]
-    rows = []
-    for raw_row in raw_rows:
-        row_data = [x.split('</td>')[0] for x in raw_row.split('<td>')[1:]]
-        row_dict = dict(zip(field_names, row_data))
-        rows.append(row_dict)
-    return rows
+        documents_url = urllib.basejoin(self.base_url, self.DOCUMENTS_PAGE)
+        data = {"corpus": self.url}
+        files = {"blob": document}
+        result = self.session.post(documents_url, data=data, files=files)
+        if result.status_code == 201:
+            return Document(session=self.session, **result.json())
+        else:
+            raise RuntimeError("Corpus creation failed with status "
+                               "{}. The response was: '{}'".format(result.status_code,
+                                result.text))
 
-def extract_documents_from_html(html):
-    '''Given an HTML, extracts and returns all documents listed there'''
-    field_names = ('filename', 'size', 'upload_date', 'owner')
-    rows = extract_data_from_html_table(html, 'table_documents', field_names)
-    for row in rows:
-        row['owner'] = row['owner'].split('>')[1].split('<')[0]
-        filename_and_slug = row['filename']
-        row['filename'] = filename_and_slug.split('>')[1].split('<')[0]
-        row['slug'] = filename_and_slug.split('"')[1].replace('/documents/', '')
-    return rows
+    def add_documents(self, documents):
+        '''
+        Adds more than one document using the same API call
 
-def extract_corpora_from_html(html):
-    '''Given an HTML, extracts and returns all corpora listed'''
-    field_names = ('name', 'created_on', 'last_modified',
-                   'number_of_documents', 'owner')
-    rows = extract_data_from_html_table(html, 'table_corpora', field_names)
-    for row in rows:
-        name_and_slug = row['name']
-        row['owner'] = row['owner'].split('>')[1].split('<')[0]
-        row['name'] = row['name'].split('>')[1].split('<')[0]
-        row['slug'] = name_and_slug.split('"')[1].replace('/corpora/', '')
-    return rows
+        Returns two lists: the first one contains the successfully uploaded
+        documents, and the second one tuples with documents that failed to be
+        uploaded and the exceptions raised.
+        '''
+        result, errors = [], []
+        for document in documents:
+            try:
+                result.append(self.add_document(document))
+            except RuntimeError as exc:
+                errors.append((document, exc))
+
+        return result, errors
 
 class PyPLN(object):
-    '''Class to connect to PyPLN's API and execute some actions'''
+    """
+    Class to connect to PyPLN's API and execute some actions
+    """
+    CORPORA_PAGE = '/corpora/'
+    DOCUMENTS_PAGE = '/documents/'
 
-    def __init__(self, base_url):
-        '''Initialize the API object, setting the base URL for the HTTP API'''
-
-        self._session = requests.session()
+    def __init__(self, base_url, credentials):
+        """
+        Initialize the API object, setting the base URL for the REST
+        API, as well as the username and password to be used.
+        """
         self.base_url = base_url
-        self.logged_in = False
-        self.username = None
-        self.password = None
-
-    def login(self, username, password):
-        '''Log-in into this API session '''
-        login_url = self.base_url + LOGIN_URL
-        login_page = self._session.get(login_url)
-        csrf_token = get_csrf(login_page.text)
-        data = {'username': username, 'password': password,
-                'csrfmiddlewaretoken': csrf_token}
-        result = self._session.post(login_url, data=data)
-        self.logged_in = 'sessionid' in result.cookies
-        if self.logged_in:
-            self.username = username
-            self.password = password
-        return self.logged_in
-
-    def logout(self):
-        '''Log-out'''
-        self._session.get(self.base_url + '/account/logout')
-        self._session = requests.session()
-        self.logged_in = False
-        self.username = None
-        self.password = None
-        return True
+        self.session = get_session_with_credentials(credentials)
 
     def add_corpus(self, name, description):
         '''Add a corpus to your account'''
-        corpora_page_url = self.base_url + CORPORA_PAGE
-        corpora_page = self._session.get(corpora_page_url)
-        csrf_token = get_csrf(corpora_page.text)
-        data = {'name': name, 'description': description,
-                'csrfmiddlewaretoken': csrf_token}
-        result = self._session.post(corpora_page_url, data=data)
-        corpora = extract_corpora_from_html(result.text)
-        this_corpus = [x for x in corpora if x['name'] == name]
-        if not this_corpus:
-            raise RuntimeError('Could not add this corpus')
+        corpora_url = self.base_url + self.CORPORA_PAGE
+        data = {'name': name, 'description': description}
+        result = self.session.post(corpora_url, data=data)
+        if result.status_code == 201:
+            return Corpus(session=self.session, **result.json())
         else:
-            corpus = this_corpus[0]
-            corpus['description'] = description
-            corpus['_session'] = self._session
-            corpus['url'] = CORPUS_URL.format(self.base_url, corpus['slug'])
-            corpus['pypln'] = self
-            return Corpus(**corpus)
+            raise RuntimeError("Corpus creation failed with status "
+                               "{}. The response was: '{}'".format(result.status_code,
+                                result.text))
 
-    def corpora(self):
-        '''Return list of corpora'''
-        result = self._session.get(self.base_url + CORPORA_PAGE)
-        corpora = extract_corpora_from_html(result.text)
-        corpora_list = []
-        for corpus in corpora:
-            #TODO: add description
-            corpus['pypln'] = self
-            corpora_list.append(Corpus(**corpus))
-        return corpora_list
+    def _retrieve_resources(self, url, class_, full):
+        '''Retrieve HTTP resources, return related objects (with pagination)'''
+        objects_to_return = []
+        response = self.session.get(url)
+        if response.status_code == 200:
+            result = response.json()
+            resources = result['results']
+            objects_to_return.extend([class_(session=self.session, **resource)
+                                      for resource in resources])
+            while full and result['next'] is not None:
+                response = self.session.get(result['next'])
+                if response.status_code == 200:
+                    result = response.json()
+                    resources = result['results']
+                    objects_to_return.extend([class_(session=self.session,
+                                                     **resource)
+                                              for resource in resources])
+                else:
+                    raise RuntimeError("Failed downloading data with status {}"
+                            ". The response was: '{}'"
+                            .format(response.status_code, response.text))
+            return objects_to_return
+        else:
+            raise RuntimeError("Failed downloading data with status {}"
+                    ". The response was: '{}'"
+                    .format(response.status_code, response.text))
+
+    def corpora(self, full=False):
+        '''Return list of corpora owned by user.
+
+        If `full=True`, it'll download all pages returned by the HTTP server'''
+        url = self.base_url + self.CORPORA_PAGE
+        class_ = Corpus
+        results = self._retrieve_resources(url, class_, full)
+        return results
+
+    def documents(self, full=False):
+        '''Return list of documents owned by user.
+
+        If `full=True`, it'll download all pages returned by the HTTP server'''
+        url = self.base_url + self.DOCUMENTS_PAGE
+        class_ = Document
+        results = self._retrieve_resources(url, class_, full)
+        return results

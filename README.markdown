@@ -1,14 +1,13 @@
 # PyPLN Application Programming Interface
 
-PyPLN is a distributed pipeline for natural language processing, made in Python.
-Learn more at [the offical website](http://www.pypln.org/).
+PyPLN is a distributed pipeline for natural language processing, made in
+Python. Learn more at [the PyPLN website](http://www.pypln.org/).
 
 
-`pypln.api` is a package that connects to PyPLN using HTTP, so you can add
-corpora, list documents and do other actions you can do through the Web
-interface. Currently we parse all the HTML returned by `pypln.web`, but in a
-near future we'll implement a RESTful API that will return only the JSON-data
-we need).
+`pypln.api` is a package that interacts with PyPLN HTTP API to do everything
+programatically, in a Pythonic way. Basically, you are able to add/list
+corpora, add/list documents and retrieve documents' properties (resulted from
+the pipeline processing by the backend).
 
 
 ## Installation
@@ -21,23 +20,41 @@ So, to install it, just execute:
 
 ## Example - Usage
 
-You can see docstrings inside `pypln.api.PyPLN`, but the general usage will
-include calling these methods:
+You can see docstrings inside `pypln.api.PyPLN`, but the general usage will be
+something like this:
 
 ```python
 from pypln.api import PyPLN
-pypln = PyPLN('http://demo.pypln.org/') # use the installation URL of pypln.web
-pypln.login('my_username', 'my_precious')
 
+# Start an authenticated session to PyPLN demo server
+pypln = PyPLN('http://demo.pypln.org/', ('username', 'password'))
+
+# You could also use your authentication token:
+#pypln = PyPLN('http://demo.pypln.org/', 'my-auth-token')
+
+# Add a new corpus to your account
 new_corpus = pypln.add_corpus(name='test', description='my new corpus')
+
+# Add a document to this new corpus
 with open('my-file.pdf') as fp:
-    new_doc = new_corpus.add_document(fp, filename='my-file.pdf')
-print 'Document added: ', new_doc
+    new_doc = new_corpus.add_document(fp)
+print('Document added: {}'.format(new_doc))
+
+# Retrieve all available (processed) properties for your brand new document
+print('Processed properties:')
+for document_property in new_doc.properties:
+    print(' - {}'.format(document_property))
+
+# Retrieve one document property:
+print('Extracted text from our PDF:')
+print(new_doc.get_property('text'))
+
 ```
 
-If you want to add more than one document in the same API call (HTTP request),
-use `pypln.add_documents`, passing a list of file objects and filenames
-(generally it's faster).
+> ProTip™: use [ipython](http://ipython.org/) to discover all methods available
+> at `PyPLN`, `Corpus` and `Document` classes - they are very simple and
+> straightford to use.
+
 
 ## License
 
