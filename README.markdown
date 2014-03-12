@@ -49,6 +49,12 @@ for document_property in new_doc.properties:
 print('Extracted text from our PDF:')
 print(new_doc.get_property('text'))
 
+# Retrieve a document using it's url:
+from pypln.api import Document
+# Make sure you replace this url for the url of a document you have access to!
+my_doc = Document.from_url('http://demo.pypln.org/documents/1/',
+    ('username', 'password'))
+print(my_doc.get_property('text')
 ```
 
 > ProTip™: use [ipython](http://ipython.org/) to discover all methods available
