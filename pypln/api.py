@@ -19,6 +19,7 @@
 
 '''Implements a Python-layer to access PyPLN's API through HTTP'''
 
+import base64
 import urllib
 import urlparse
 
@@ -95,6 +96,11 @@ class Document(object):
             raise RuntimeError("Getting property {} failed with status "
                                "{}. The response was: '{}'".format(prop,
                                    response.status_code, response.text))
+
+    def download_wordcloud(self, filename):
+        encoded_png = self.get_property('wordcloud')
+        with open(filename, 'w') as fp:
+            fp.write(base64.b64decode(encoded_png))
 
     @property
     def properties(self):
