@@ -55,6 +55,10 @@ from pypln.api import Document
 my_doc = Document.from_url('http://demo.pypln.org/documents/1/',
     ('username', 'password'))
 print(my_doc.get_property('text')
+
+# Retrieve wordcloud image built from the document
+with open("wordcloud_{}.png".format(doc_id), 'w') as fd:
+    fd.write(base64.b64decode(my_doc.get_property("wordcloud")))
 ```
 
 > ProTip™: use [ipython](http://ipython.org/) to discover all methods available
