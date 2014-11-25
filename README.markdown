@@ -27,10 +27,10 @@ something like this:
 from pypln.api import PyPLN
 
 # Start an authenticated session to PyPLN demo server
-pypln = PyPLN('http://demo.pypln.org/', ('username', 'password'))
+pypln = PyPLN('http://fgv.pypln.org/', ('username', 'password'))
 
 # You could also use your authentication token:
-#pypln = PyPLN('http://demo.pypln.org/', 'my-auth-token')
+#pypln = PyPLN('http://fgv.pypln.org/', 'my-auth-token')
 
 # Add a new corpus to your account
 new_corpus = pypln.add_corpus(name='test', description='my new corpus')
@@ -52,7 +52,7 @@ print(new_doc.get_property('text'))
 # Retrieve a document using it's url:
 from pypln.api import Document
 # Make sure you replace this url for the url of a document you have access to!
-my_doc = Document.from_url('http://demo.pypln.org/documents/1/',
+my_doc = Document.from_url('http://fgv.pypln.org/documents/1/',
     ('username', 'password'))
 print(my_doc.get_property('text'))
 
