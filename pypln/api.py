@@ -180,7 +180,7 @@ class Corpus(object):
         if result.status_code == 201:
             return Document(session=self.session, **result.json())
         else:
-            raise RuntimeError("Corpus creation failed with status "
+            raise RuntimeError("Document creation failed with status "
                                "{}. The response was: '{}'".format(result.status_code,
                                 result.text))
 
