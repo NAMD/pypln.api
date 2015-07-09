@@ -105,7 +105,10 @@ class Document(object):
     def download_wordcloud(self, filename):
         encoded_png = self.get_property('wordcloud')
         with open(filename, 'w') as fp:
-            fp.write(base64.b64decode(encoded_png))
+            # Since a base64 string is guaranteed to have only ascii strings we
+            # can decode it to ascii which will give a unicode object in
+            # python2 and a str object in python3
+            fp.write(base64.b64decode(encoded_png).decode('ascii'))
 
     @property
     def properties(self):
