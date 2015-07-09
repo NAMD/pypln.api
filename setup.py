@@ -21,7 +21,7 @@ from setuptools import setup, find_packages
 
 
 setup(name='pypln.api',
-      version='0.2.0',
+      version='0.3.0',
       author=("'Álvaro Justen <alvarojusten@gmail.com>', "
               "'Flávio Amieiro <flavioamieiro@gmail.com>'"),
       author_email='pypln@googlegroups.com',
