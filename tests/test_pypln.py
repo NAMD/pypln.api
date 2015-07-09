@@ -20,7 +20,10 @@
 import base64
 import unittest
 
-from mock import call, patch, Mock, mock_open
+try:
+    from unittest.mock import call, patch, Mock, mock_open
+except ImportError:
+    from mock import call, patch, Mock, mock_open
 
 import requests
 
@@ -556,7 +559,7 @@ class DocumentTest(unittest.TestCase):
 
     @patch("requests.Session.get")
     def test_download_wordcloud(self, mocked_get):
-        png = "This is not really a png.\n"
+        png = "This is not really a png.\n".encode('ascii')
         encoded_png = base64.b64encode(png)
 
         mocked_get.return_value.status_code = 200
@@ -564,12 +567,18 @@ class DocumentTest(unittest.TestCase):
 
         document = Document(session=self.session, **self.example_json)
 
+        import sys
+        if sys.version < '3':
+            builtins_module = '__builtin__'
+        else:
+            builtins_module = 'builtins'
+
         m = mock_open()
-        with patch('__builtin__.open', m, create=True):
+        with patch('{}.open'.format(builtins_module), m, create=True):
             document.download_wordcloud('test.png')
 
         m.assert_called_once_with('test.png', 'w')
         handle = m()
-        handle.write.assert_called_once_with(png)
+        handle.write.assert_called_once_with(png.decode('ascii'))
         mocked_get.assert_called_with(self.example_json['properties'] +
                 'wordcloud')
