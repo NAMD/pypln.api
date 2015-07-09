@@ -19,8 +19,14 @@
 
 '''Implements a Python-layer to access PyPLN's API through HTTP'''
 
-import urllib
-import urlparse
+import base64
+
+try:
+    from urllib.parse import urljoin
+    from urllib.parse import urlsplit
+except ImportError:
+    from urlparse import urljoin
+    from urlparse import urlsplit
 
 import requests
 
@@ -87,7 +93,7 @@ class Document(object):
                                 result.text))
 
     def get_property(self, prop):
-        url = urlparse.urljoin(self.properties_url, prop)
+        url = urljoin(self.properties_url, prop)
         response = self.session.get(url)
         if response.status_code == 200:
             return response.json()['value']
@@ -95,6 +101,14 @@ class Document(object):
             raise RuntimeError("Getting property {} failed with status "
                                "{}. The response was: '{}'".format(prop,
                                    response.status_code, response.text))
+
+    def download_wordcloud(self, filename):
+        encoded_png = self.get_property('wordcloud')
+        with open(filename, 'w') as fp:
+            # Since a base64 string is guaranteed to have only ascii strings we
+            # can decode it to ascii which will give a unicode object in
+            # python2 and a str object in python3
+            fp.write(base64.b64decode(encoded_png).decode('ascii'))
 
     @property
     def properties(self):
@@ -128,7 +142,7 @@ class Corpus(object):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-        splited_url = urlparse.urlsplit(self.url)
+        splited_url = urlsplit(self.url)
         self.base_url = "{}://{}".format(splited_url.scheme, splited_url.netloc)
 
     def __repr__(self):
@@ -167,14 +181,14 @@ class Corpus(object):
         containing a filename followed by any of these two options.
         '''
 
-        documents_url = urllib.basejoin(self.base_url, self.DOCUMENTS_PAGE)
+        documents_url = urljoin(self.base_url, self.DOCUMENTS_PAGE)
         data = {"corpus": self.url}
         files = {"blob": document}
         result = self.session.post(documents_url, data=data, files=files)
         if result.status_code == 201:
             return Document(session=self.session, **result.json())
         else:
-            raise RuntimeError("Corpus creation failed with status "
+            raise RuntimeError("Document creation failed with status "
                                "{}. The response was: '{}'".format(result.status_code,
                                 result.text))
 

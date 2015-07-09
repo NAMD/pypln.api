@@ -17,9 +17,13 @@
 # You should have received a copy of the GNU General Public License
 # along with PyPLN.  If not, see <http://www.gnu.org/licenses/>.
 
+import base64
 import unittest
 
-from mock import call, patch, Mock
+try:
+    from unittest.mock import call, patch, Mock, mock_open
+except ImportError:
+    from mock import call, patch, Mock, mock_open
 
 import requests
 
@@ -552,3 +556,29 @@ class DocumentTest(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             document.get_property('text')
+
+    @patch("requests.Session.get")
+    def test_download_wordcloud(self, mocked_get):
+        png = "This is not really a png.\n".encode('ascii')
+        encoded_png = base64.b64encode(png)
+
+        mocked_get.return_value.status_code = 200
+        mocked_get.return_value.json.return_value = {'value': encoded_png}
+
+        document = Document(session=self.session, **self.example_json)
+
+        import sys
+        if sys.version < '3':
+            builtins_module = '__builtin__'
+        else:
+            builtins_module = 'builtins'
+
+        m = mock_open()
+        with patch('{}.open'.format(builtins_module), m, create=True):
+            document.download_wordcloud('test.png')
+
+        m.assert_called_once_with('test.png', 'w')
+        handle = m()
+        handle.write.assert_called_once_with(png.decode('ascii'))
+        mocked_get.assert_called_with(self.example_json['properties'] +
+                'wordcloud')
