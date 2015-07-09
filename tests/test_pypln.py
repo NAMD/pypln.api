@@ -569,7 +569,7 @@ class DocumentTest(unittest.TestCase):
 
         import sys
         if sys.version < '3':
-            builtins_module = '__builtins__'
+            builtins_module = '__builtin__'
         else:
             builtins_module = 'builtins'
 
