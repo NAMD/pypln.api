@@ -1,5 +1,8 @@
 # PyPLN Application Programming Interface
 
+[![PyPi version](https://pypip.in/v/pypln.api/badge.png)](https://crate.io/packages/pypln.api/)
+[![PyPi downloads](https://pypip.in/d/pypln.api/badge.png)](https://crate.io/packages/pypln.api/)
+
 PyPLN is a distributed pipeline for natural language processing, made in
 Python. Learn more at [the PyPLN website](http://www.pypln.org/).
 
